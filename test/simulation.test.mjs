@@ -61,10 +61,10 @@ test('predicted collision, measured collision and persistent report do not hide 
 });
 test('landing respawns an arrival; outbound sector exit respawns a departure, preserving count',()=>{
  const s=createSimulation(0,42);for(const f of s.flights)f.phase='taxi_out';
- const a=s.flights[50],r=RUNWAYS[0];a.phase='approach';a.lane=0;[a.x,a.y]=offset(r.point,r.headingTrue+180,.12);a.heading=r.headingTrue;a.altitude=r.elevation;a.speed=140;a.command={route:'ILS_16R_GAZGE',navigation:{points:[r.point],index:0},altitude:r.elevation,speed:140,rate:1000};
+ const a=s.flights[50],r=RUNWAYS[0];a.phase='approach';a.lane=0;[a.x,a.y]=offset(r.point,r.headingTrue,.05);a.heading=r.headingTrue;a.altitude=r.elevation;a.speed=140;a.command={route:'ILS_16R_GAZGE',navigation:{points:[r.point],index:0},altitude:r.elevation,speed:140,rate:1000};
  advanceSimulation(s,1);assert.equal(s.stats.landings,1);advanceSimulation(s,2);
  assert.equal(a.mission,'arrival');assert.equal(a.phase,'arrival');assert.equal(a.command,null);assert.equal(a.cycles,1);
- const d=s.flights[0];d.phase='departure';d.x=60;d.y=0;d.altitude=6000;d.procedureDone=true;
+ const d=s.flights[0];d.phase='departure';d.x=60;d.y=0;d.altitude=6000;d.heading=90;d.procedureDone=true;
  advanceSimulation(s,1);assert.equal(d.phase,'taxi_out');assert.equal(d.mission,'departure');assert.equal(d.command,null);assert.equal(d.cycles,1);assert.equal(s.stats.departures,1);
  assert.equal(s.flights.length,100);assert.equal(s.stats.cycles,2);
 });

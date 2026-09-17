@@ -1,0 +1,140 @@
+{
+  "protocolId": "vector-observational-v2",
+  "status": "development-draft-not-preregistered",
+  "schemaVersion": 1,
+  "studyDesign": "Single-arm, budget-limited closed-loop software-system observation; no paid A/B required.",
+  "targetScope": "Airborne control only; touchdown and documented departure exit may respawn after outcome measurement.",
+  "currentScope": "Airborne-only runtime by default; explicit legacy test fixtures remain separately labeled.",
+  "executionPolicy": "jev-command-observe-v1",
+  "auditVersion": "command-constraint-v1",
+  "units": {
+    "command": "One schema-accepted aircraft route/altitude/IAS/rate bundle in one plan revision and aircraft generation.",
+    "finding": "One triggered detector rule within that command.",
+    "frame": "One frozen plan; includes multiple correlated aircraft commands and HTTP batches.",
+    "flight": "Aircraft identifier plus generation, within a run.",
+    "run": "An independently initialized, frozen configuration and seed; not one HTTP request."
+  },
+  "commandRules": [
+    {
+      "id": "holding-minimum-altitude",
+      "basis": "published",
+      "predicate": "HOLD: command altitude < frozen holding minimum.",
+      "interpretation": "Target conflict with a sourced minimum; not a measured altitude violation."
+    },
+    {
+      "id": "holding-speed-limit",
+      "basis": "published-or-demo-rule",
+      "predicate": "HOLD: command IAS > published maxSpeed if present; otherwise 200/230/265 kt for altitude <=6000/<=14000/>14000 ft at receipt.",
+      "interpretation": "Default speeds are simulator assumptions, not certified local limits."
+    },
+    {
+      "id": "published-altitude-floor",
+      "basis": "published",
+      "predicate": "Active next leg: command altitude < exact altitude or minAltitude.",
+      "interpretation": "Immediate target-versus-next-leg diagnostic; not proof that a future crossing will be missed."
+    },
+    {
+      "id": "published-altitude-ceiling",
+      "basis": "published",
+      "predicate": "Active next leg: command altitude > exact altitude or maxAltitude.",
+      "interpretation": "Immediate target-versus-next-leg diagnostic; subsequent commands may change the target."
+    },
+    {
+      "id": "published-speed-constraint",
+      "basis": "published",
+      "predicate": "Active next leg: command IAS != exact speed, or command IAS > maxSpeed.",
+      "interpretation": "Exact requested-target comparison; physical crossing measurement separately uses +/-5 kt."
+    },
+    {
+      "id": "fap-altitude-floor",
+      "basis": "demo-rule",
+      "predicate": "APP index <= FAP index: command altitude < sourced FAP altitude.",
+      "interpretation": "Simulator-wide pre-FAP floor interpretation using published data; NOT a claim of universal operational applicability."
+    },
+    {
+      "id": "approach-clearance-mismatch",
+      "basis": "integration-rule",
+      "predicate": "Selected APP runway != stored landingClearance, including missing clearance.",
+      "interpretation": "Legacy integration rule couples approach and landing permission; not an aviation-law label."
+    },
+    {
+      "id": "low-altitude-speed-limit",
+      "basis": "demo-rule",
+      "predicate": "At receipt actual altitude <10000 ft AND command IAS >250 kt.",
+      "interpretation": "Simplified simulator rule; no regional exceptions modeled."
+    },
+    {
+      "id": "sid-climb-gradient",
+      "basis": "published",
+      "predicate": "SID, below climbGradientUntil and target > actual altitude +150 ft: command rate < minClimbFtPerNm * no-wind current groundSpeedKt /60.",
+      "interpretation": "Instantaneous kinematic test, not a full trajectory-feasibility assessment. Unknown speed is not a proven compliant departure."
+    }
+  ],
+  "metrics": {
+    "commandConflictFraction": "commands with >=1 finding / checked aircraft-command bundles, in the same evaluation epoch",
+    "publishedConflictFraction": "commands with >=1 published-basis finding / checked commands",
+    "simulatorRuleConflictFraction": "commands with >=1 demo-rule finding / checked commands",
+    "integrationConflictFraction": "commands with >=1 integration-rule finding / checked commands",
+    "perRuleCounts": "At most once per rule per command. No applicability-normalized rate is claimed.",
+    "physicalLimitRequestFraction": "commands requesting rate above the modeled aircraft rate ceiling / checked commands; not a procedure finding",
+    "accidentEventRate": "100 * (collision-group events + ground-impact events) / airborne aircraft-hours, using evaluation-start counter deltas. Composite events, not unique accident probability.",
+    "zeroDenominator": "null, never 0% success or safety",
+    "counting": "A repeated newly accepted command counts again. Physics ticks, forecast clones, report reads and stale/invalid rejected responses do not count as accepted commands."
+  },
+  "measurements": {
+    "separation": {
+      "horizontalNm": 3,
+      "verticalFt": 1000,
+      "comparison": "strictly less than both",
+      "unit": "pair episode; re-count only after separation recovery"
+    },
+    "critical": {
+      "horizontalNm": 1,
+      "verticalFt": 500,
+      "comparison": "strictly less than both",
+      "unit": "pair episode"
+    },
+    "collision": {
+      "horizontalNm": 0.12,
+      "verticalFt": 150,
+      "comparison": "strictly less than both",
+      "unit": "Connected swept-overlap group within one <=1-second substep, before terminal removal."
+    },
+    "crossingAltitudeToleranceFt": 150,
+    "crossingSpeedToleranceKt": 5,
+    "crossTrackToleranceNm": 2,
+    "procedureCounting": "One finding per category + route/rule/fix key in an aircraft generation; not duration, not each tick.",
+    "timing": "Physics substeps <=1 simulated second; 60s regular decision horizon; forecast up to 120s; critical trigger <=45s with 10s cooldown. Provider waits, no viewers and exhausted budgets pause simulated time.",
+    "surfaceModel": "0 ft MSL background with 60 m wide elevated runway strips; no terrain database.",
+    "touchdown": "Actual runway-strip surface contact, assigned runway, heading error <15 deg, IAS <=190 kt, contact sink <=900 fpm; simulator assumptions.",
+    "departureExit": "SID complete or sector boundary; radius >=30 NM, outward heading, no predicted pair conflict in next120 seconds. Measure first, remove last."
+  },
+  "retention": {
+    "commandFlaggedRecords": 64,
+    "commandFlaggedBytes": 32000,
+    "incidents": 200,
+    "fullDecisionFrames": 1,
+    "commandRecords": "Flagged-only rolling window, not a random or representative sample.",
+    "fullJournalImplemented": true
+  },
+  "reporting": {
+    "noFinding": "No finding under implemented applicable detectors, NOT proof of procedural compliance or safety.",
+    "attribution": "Command references establish temporal association, not causal attribution.",
+    "confidence": "Distribution concentration, NOT probability of no accident; calibration against future safety is not claimed.",
+    "oldRuns": "No historical backfill, no fabricated denominators, do not pool policy versions.",
+    "statistics": "Report run/flight dependence. Never use 403 question outputs as 403 independent trials. Single-run rates are descriptive; no automatic p-values or independent-binomial intervals.",
+    "stopping": "Freeze a run manifest with seeds, exposure target, credit cap and infrastructure stop rules before the evaluated run. No stopping because results look favorable."
+  },
+  "references": [
+    {
+      "title": "TypeSafe state: independent questions over shared state",
+      "url": "https://docs.typesafe.ai/concepts/state",
+      "accessed": "2026-09-17"
+    },
+    {
+      "title": "TypeSafe confidence",
+      "url": "https://docs.typesafe.ai/confidence",
+      "accessed": "2026-09-17"
+    }
+  ]
+}

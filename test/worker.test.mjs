@@ -22,7 +22,7 @@ async function harness(t,stored=new Map(),overrides={}){
  t.mock.method(globalThis,'fetch',async(_url,opts)=>{calls.push(JSON.parse(opts.body));return Response.json(response(calls.at(-1)));});
  const storage={get:async k=>structuredClone(stored.get(k)),put:async(k,v)=>{for(const [name,value] of Object.entries(typeof k==='string'?{[k]:v}:k))stored.set(name,structuredClone(value));},getAlarm:async()=>alarm,setAlarm:async n=>{alarm=n;},deleteAlarm:async()=>{alarm=null;}};
  const ctx={storage,blockConcurrencyWhile:fn=>{ready=fn();return ready;}};
- const controller=new AirportSimulation(ctx,{TYPESAFE_API_KEY:'fixture-only',AI_DAILY_TOKEN_LIMIT:'1000000',AI_HOURLY_REQUEST_LIMIT:'720',...overrides});await ready;
+ const controller=new AirportSimulation(ctx,{SIM_SCOPE:'legacy-test-fixture',TYPESAFE_API_KEY:'fixture-only',AI_DAILY_TOKEN_LIMIT:'1000000',AI_HOURLY_REQUEST_LIMIT:'720',...overrides});await ready;
  return {controller,calls,stored,advance:ms=>{now+=ms;},alarm:()=>alarm};
 }
 
@@ -190,4 +190,183 @@ test('emergency evidence replaces prior runway judgments rather than reusing sta
  assert.deepEqual(c.record.ai.last.evidence.runwayOrder,[]);
  assert.equal(Object.keys(c.record.ai.last.evidence.answers).length,8);
  assert.ok(Object.keys(c.record.ai.last.evidence.answers).every(id=>id.startsWith(a.id+'_')||id.startsWith(b.id+'_')));
+});
+
+
+test('control-policy migration preserves prior results, budget, replay and old decision evidence',async t=>{
+ const h=await harness(t),c=h.controller;
+ await c.heartbeat('viewer',1,true);await c.alarm();
+ c.record.sim.elapsed=123;c.record.sim.stats.collisions=2;
+ delete c.record.sim.controlEpoch;delete c.record.ai.last.evidence.controlPolicy;
+ await c.persist(c.record);
+ const before=structuredClone(c.record),replay=JSON.stringify(await c.replayData());
+ const reloaded=await harness(t,h.stored),next=reloaded.controller;
+ assert.equal(reloaded.calls.length,0);assert.equal(next.record.sim.elapsed,123);
+ assert.deepEqual(next.record.sim.stats,before.sim.stats);assert.deepEqual(next.record.sim.flights,before.sim.flights);
+ assert.deepEqual(next.record.budget,before.budget);assert.deepEqual(next.record.ai.last,before.ai.last);
+ assert.equal(JSON.stringify(await next.replayData()),replay);
+ assert.equal(next.record.sim.controlEpoch.policy,'jev-command-observe-v1');
+ assert.equal(next.record.sim.controlEpoch.previousPolicy,'procedure-target-repair-v1');
+ assert.equal(next.record.sim.controlEpoch.elapsed,123);
+ assert.deepEqual(next.record.sim.controlEpoch.baseline,before.sim.stats);
+ const report=await next.report();assert.equal(report.pilotControlPolicy,'jev-command-observe-v1');
+ assert.equal(report.stats.collisions,2);assert.equal(report.controlEpochStats.collisions,0);
+ assert.equal((await next.snapshot()).pilotControlPolicy,'jev-command-observe-v1');
+ const epoch=structuredClone(next.record.sim.controlEpoch);
+ const again=await harness(t,h.stored);assert.deepEqual(again.controller.record.sim.controlEpoch,epoch);
+ assert.equal(again.calls.length,0);
+});
+test('new evidence identifies observational execution without rewriting original answers',async t=>{
+ const h=await harness(t);await h.controller.heartbeat('viewer',1,true);await h.controller.alarm();
+ const last=h.controller.record.ai.last;
+ assert.equal(last.evidence.controlPolicy,'jev-command-observe-v1');assert.equal(last.applied,100);
+ assert.equal(Object.keys(last.evidence.answers).length,403);
+ for(const request of h.calls){
+  assert.match(request.state.policy,/never repairs unsafe commands/);
+  assert.match(request.state.policy,/constraintWarnings are non-blocking/);
+ }
+});
+
+
+test('procedure command audit persists through controller reload without re-logging or spending credits',async t=>{
+ const h=await harness(t),c=h.controller;
+ await c.heartbeat('viewer',1,true);await c.alarm();
+ const before=structuredClone((await c.report()).commandAudit),budget=structuredClone(c.record.budget);
+ assert.equal(before.checkedCommands,100);assert.ok(before.procedureCommands>0);assert.ok(before.records.length>0);
+ const frameCalls=h.calls.length;
+ for(let i=0;i<3;i++){await c.snapshot();await c.report();}
+ assert.equal(h.calls.length,frameCalls);assert.deepEqual((await c.report()).commandAudit,before);
+ const reload=await harness(t,h.stored);assert.equal(reload.calls.length,0);
+ assert.deepEqual((await reload.controller.report()).commandAudit,before);assert.deepEqual(reload.controller.record.budget,budget);
+ assert.equal((await reload.controller.snapshot()).commandAudit.records,undefined);
+ for(const request of h.calls)assert.equal(request.state.commandAudit,undefined);
+});
+test('legacy command audit begins empty at migration, preserves old commands and reports unknown historical coverage',async t=>{
+ const h=await harness(t),c=h.controller;
+ await c.heartbeat('viewer',1,true);await c.alarm();c.record.sim.elapsed=123;
+ delete c.record.sim.commandAudit;await c.persist(c.record);
+ const old=structuredClone(c.record),oldReplay=JSON.stringify(await c.replayData());
+ const reload=await harness(t,h.stored),next=reload.controller;
+ const a=(await next.report()).commandAudit;
+ assert.equal(reload.calls.length,0);assert.equal(a.startedAtSimSeconds,123);assert.equal(a.checkedCommands,0);assert.equal(a.procedureCommands,0);assert.deepEqual(a.records,[]);
+ assert.deepEqual(next.record.sim.flights,old.sim.flights);assert.deepEqual(next.record.sim.stats,old.sim.stats);
+ assert.deepEqual(next.record.ai,old.ai);assert.deepEqual(next.record.budget,old.budget);assert.equal(JSON.stringify(await next.replayData()),oldReplay);
+ const again=await harness(t,h.stored);assert.deepEqual((await again.controller.report()).commandAudit,a);assert.equal(again.calls.length,0);
+});
+test('full command history plus measured incidents and normalized decision evidence fit the storage value',async t=>{
+ const {recordIncident}=await import('../src/simulation.mjs');
+ const h=await harness(t),c=h.controller;await c.heartbeat('viewer',1,true);await c.alarm();
+ const ids=c.record.sim.flights.map(f=>f.id),commands=c.record.sim.flights.map(f=>f.command);
+ for(let i=0;i<200;i++)recordIncident(c.record.sim,'storage-fixture-collision',ids,{commands});
+ const before=structuredClone(c.record.sim.incidents);
+ assert.equal(c.record.sim.incidents.length,200);assert.ok(c.record.sim.commandAudit.records.length>0);
+ assert.ok(Buffer.byteLength(JSON.stringify(c.record))<1000000);
+ await c.persist(c.record);const reload=await harness(t,h.stored);
+ assert.deepEqual(reload.controller.record.sim.incidents,before);assert.deepEqual(reload.controller.record.sim.commandAudit,c.record.sim.commandAudit);
+ assert.equal(reload.calls.length,0);
+});
+
+
+test('evaluation export and request fingerprints persist without extra inference or secret material',async t=>{
+ const {createHash}=await import('node:crypto');const h=await harness(t),c=h.controller;
+ await c.heartbeat('viewer',1,true);await c.alarm();
+ const e=c.record.ai.last.evidence,report=await c.report();
+ assert.equal(e.evaluationProtocol,report.evaluation.protocolId);assert.equal(report.evaluation.commands.checkedCommands,100);
+ assert.equal(e.promptVersion,'jev-atc-airborne-observe-v2');assert.equal(e.contextVersion,'compact-state-geometry-v2');assert.equal(e.requests.length,h.calls.length);
+ e.requests.forEach((b,index)=>{assert.equal(b.requestSha256,createHash('sha256').update(JSON.stringify(h.calls[index])).digest('hex'));assert.equal(b.requestedModel,h.calls[index].model);assert.equal(b.returnedModel,'jev-1.13.0');assert.equal(b.inputTokens,1000);});
+ assert.equal(JSON.stringify(report).includes('fixture-only'),false);
+ const before=structuredClone(report.evaluation),reloaded=await harness(t,h.stored);
+ assert.equal(reloaded.calls.length,0);assert.deepEqual((await reloaded.controller.report()).evaluation,before);
+});
+
+async function journalEntries(c){const meta=await c.researchData(),entries=[];for(let i=0;i<meta.nextSequence;i++){const d=await c.researchData(i);let text='';for(let j=0;j<d.chunkCount;j++)text+=(await c.researchData(i,j)).text;entries.push(JSON.parse(text));}return entries;}
+test('airborne controller never asks pending ground identities and archives every applied command',async t=>{
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only'}),c=h.controller;await c.heartbeat('viewer',1,true);await c.alarm();
+ assert.equal(c.record.sim.trafficScope,'airborne-handoff-v1');assert.equal(c.record.ai.last.aircraft,51);assert.equal(c.record.ai.last.questions,204);assert.equal(c.record.ai.last.applied,51);
+ const ground=new Set(c.record.sim.flights.filter(f=>f.phase==='pending').map(f=>f.id));for(const r of h.calls)for(const id of Object.keys(r.questions))assert.ok(!ground.has(id.split('_')[0]));
+ const entries=await journalEntries(c),commands=entries.flatMap(e=>e.events.filter(e=>e.kind==='application').flatMap(e=>e.events.filter(e=>e.kind==='command-applied')));
+ assert.equal(commands.length,51);assert.equal(new Set(commands.map(e=>e.command.id)).size,51);
+ assert.equal((await c.report()).evaluation.byScope.ground.checkedCommands,0);assert.equal((await c.report()).evaluation.dataAvailability.fullDecisionJournal,true);
+ const before=await c.researchData(),calls=h.calls.length;await c.report();await c.researchData(0,0);assert.deepEqual(await c.researchData(),before);assert.equal(h.calls.length,calls);
+});
+test('oversized input is visible, does not spend credits and does not retry the same frozen state',async t=>{
+ const h=await harness(t),c=h.controller,{FIXES}=await import('../src/airport.mjs'),[x,y]=FIXES.GAZGE.point;
+ for(const [i,f] of c.record.sim.flights.slice(50).entries())Object.assign(f,{x:x+i*.001,y,altitude:6000});
+ await c.heartbeat('viewer',1,true);await c.alarm();assert.equal(c.record.ai.mode,'input-too-large');assert.equal(c.record.ai.planningFailures,1);assert.equal(h.calls.length,0);
+ h.advance(5000);await c.alarm();assert.equal(c.record.ai.planningFailures,1);assert.equal(h.alarm(),null);assert.equal(h.calls.length,0);
+});
+for(const phase of ['before-dispatch','after-dispatch'])test('archive failure '+phase+' stops without advancing an unacknowledged simulation',async t=>{
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only'}),c=h.controller,original=c.ctx.storage.put;
+ t.mock.method(c.ctx.storage,'put',async(k,v)=>{if(typeof k==='object'&&k['research-journal-v1']&&(phase==='before-dispatch'||k['airport-ltfm-v1']?.ai.mode==='active'))throw Error('injected-write-failure');return original(k,v);});
+ await c.heartbeat('viewer',1,true);await c.alarm();assert.equal(c.record.ai.mode,'archive-error');assert.equal(c.record.sim.elapsed,0);assert.equal(c.record.sim.stats.aiApplied,0);assert.equal(h.alarm(),null);
+ if(phase==='before-dispatch')assert.equal(h.calls.length,0);else{assert.ok(h.calls.length>0);assert.ok(c.record.budget.tokens>0);}
+ const calls=h.calls.length;h.advance(5000);await c.alarm();assert.equal(h.calls.length,calls);
+});
+test('journal permits exact deterministic command/physics replay without another provider call',async t=>{
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only'}),c=h.controller;await c.heartbeat('viewer',1,true);await c.alarm();h.advance(2000);await c.alarm();
+ const {advanceSimulation,applyFleetDecision}=await import('../src/simulation.mjs'),{simulationStateSha256,STATE_DIGEST_VERSION}=await import('../server/research-journal.mjs');
+ const entries=await journalEntries(c),plans=new Map();let sim,outcomes;
+ for(const entry of entries){for(const e of entry.events){
+  if(e.kind==='initial-state')sim=structuredClone(e.sim);
+  if(e.kind==='dispatch-intent')plans.set(e.planRevision,e.plan);
+  if(e.kind==='dispatch-outcomes')outcomes=e.outcomes;
+  if(e.kind==='application'){const answers=Object.assign({},...outcomes.filter(o=>o.status==='fulfilled').map(o=>o.result.answers));applyFleetDecision(sim,plans.get(e.planRevision),answers);}
+  if(e.kind==='physics-step'){if(e.idleAdvance)sim.requiresDecision=false;advanceSimulation(sim,e.to-e.from);}
+ }
+ assert.equal(entry.stateDigestVersion,STATE_DIGEST_VERSION);const digest=await simulationStateSha256(sim);assert.equal(digest,entry.stateSha256,'journal state digest at '+entry.sequence);
+ }
+ assert.deepEqual(sim.flights,c.record.sim.flights);assert.deepEqual(sim.stats,c.record.sim.stats);
+});
+test('frozen controller enforces exposure limit, version identity and records a completed stop',async t=>{
+ const {createAirborneSimulation}=await import('../src/simulation.mjs'),{runtimeVersions,initialStateFingerprint,provenance}=await import('../server/study-run.mjs');
+ const m={status:'frozen-local',runId:'test-frozen',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds:1,maxWallSeconds:60,maxTotalInputTokens:1000000,stopForFavorableResults:false}};
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(m),RESEARCH_RUN_ID:m.runId}),c=h.controller;
+ await c.heartbeat('viewer',1,true);await c.alarm();h.advance(2000);await c.alarm();assert.equal(c.record.sim.elapsed,1);assert.equal(c.record.ai.mode,'study-stopped');assert.equal(c.record.study.status,'completed');
+ const calls=h.calls.length;h.advance(2000);await c.alarm();assert.equal(h.calls.length,calls);assert.equal(c.record.study.manifest.sourceFingerprint,provenance.sourceFingerprint);
+});
+
+
+test('study HTTP reads and presence all address the same run object',async t=>{
+ const prior=globalThis.caches,cache=new Map(),addressed=[];
+ globalThis.caches={default:{match:async r=>cache.get(r.url)?.clone(),put:async(r,v)=>cache.set(r.url,v.clone())}};
+ t.after(()=>{if(prior===undefined)delete globalThis.caches;else globalThis.caches=prior;});
+ const limit={limit:async()=>({success:true})};
+ const env={RESEARCH_RUN_ID:'routing-test',STATE_READ_LIMITER:limit,PRESENCE_LIMITER:limit,AIRPORT:{getByName:name=>{addressed.push(name);return {snapshot:async()=>({objectName:name}),report:async()=>({objectName:name}),replayData:async()=>({objectName:name}),researchData:async()=>({objectName:name}),heartbeat:async()=>true};}}};
+ for(const route of ['/api/state','/api/replay','/api/research','/api/report']){
+  const r=await worker.fetch(new Request('https://fixture.invalid'+route),env);assert.equal(r.status,200);assert.equal((await r.json()).objectName,'study-routing-test',route);
+ }
+ const r=await worker.fetch(new Request('https://fixture.invalid/api/presence',{method:'POST',headers:{Origin:'https://fixture.invalid'},body:JSON.stringify({id:'test-viewer-123456789012345',sequence:1,active:true})}),env);
+ assert.equal(r.status,204);assert.equal(addressed.length,5);assert.ok(addressed.every(n=>n==='study-routing-test'));
+});
+test('state and replay caches cannot leak a previous study or the legacy demo into another run',async t=>{
+ const prior=globalThis.caches,cache=new Map();globalThis.caches={default:{match:async r=>cache.get(r.url)?.clone(),put:async(r,v)=>cache.set(r.url,v.clone())}};
+ t.after(()=>{if(prior===undefined)delete globalThis.caches;else globalThis.caches=prior;});
+ const env={STATE_READ_LIMITER:{limit:async()=>({success:true})},AIRPORT:{getByName:name=>({snapshot:async()=>({objectName:name}),replayData:async()=>({objectName:name})})}};
+ for(const runId of ['alpha','beta',undefined])for(const route of ['/api/state','/api/replay?page=0']){
+  const r=await worker.fetch(new Request('https://fixture.invalid'+route),{...env,RESEARCH_RUN_ID:runId});assert.equal(r.status,200);assert.equal((await r.json()).objectName,runId?'study-'+runId:'istanbul-demo-v2');
+ }
+ assert.equal(cache.size,6);
+});
+
+async function frozenFixtureHarness(t,targetSimulatedSeconds=10){
+ const {createAirborneSimulation}=await import('../src/simulation.mjs'),{runtimeVersions,initialStateFingerprint,provenance}=await import('../server/study-run.mjs');
+ const m={status:'frozen-local',runId:'freeze-edge',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds,maxWallSeconds:60,maxTotalInputTokens:1000000,stopForFavorableResults:false}};
+ return harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(m),RESEARCH_RUN_ID:m.runId});
+}
+test('a frozen study with no active aircraft stops at its exposure target without overshoot',async t=>{
+ const h=await frozenFixtureHarness(t,1),c=h.controller;c.record.sim.elapsed=.75;
+ for(const f of c.record.sim.flights)Object.assign(f,{phase:'pending',releaseAt:1000,command:null});
+ await c.heartbeat('viewer',1,true);await c.alarm();
+ assert.equal(c.record.sim.elapsed,1);assert.equal(c.record.study.status,'completed');assert.equal(c.record.ai.mode,'study-stopped');assert.equal(h.calls.length,0);assert.equal(h.alarm(),null);
+});
+test('wall deadline is finalized on the next wake even when every viewer has left',async t=>{
+ const h=await frozenFixtureHarness(t),c=h.controller;h.advance(61000);await c.alarm();
+ assert.equal(c.record.study.status,'incomplete');assert.equal(c.record.study.stopReason,'wall-time');assert.equal(h.calls.length,0);assert.equal(c.record.sim.elapsed,0);
+});
+test('oversized study input is an archived infrastructure stop, not an unexplained pause',async t=>{
+ const h=await frozenFixtureHarness(t),c=h.controller,{FIXES}=await import('../src/airport.mjs'),[x,y]=FIXES.GAZGE.point;
+ for(const [i,f] of c.record.sim.flights.slice(50).entries())Object.assign(f,{x:x+i*.001,y,altitude:6000});
+ await c.heartbeat('viewer',1,true);await c.alarm();
+ assert.equal(c.record.study.status,'incomplete');assert.equal(c.record.study.stopReason,'input-too-large');assert.equal(h.calls.length,0);
+ const entries=await journalEntries(c);assert.ok(entries.flatMap(e=>e.events).some(e=>e.kind==='study-stop'&&e.reason==='input-too-large'));
 });

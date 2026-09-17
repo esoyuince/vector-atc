@@ -16,19 +16,19 @@ test('waypoint crossing records violations with bounded pilot response and retai
  const f=s.flights[50];f.phase='arrival';f.arrival='RIXEN1P';f.progress.RIXEN1P=0;
  [f.x,f.y]=FIXES.RIXEN.point;f.altitude=22000;f.speed=280;
  f.command={route:'RIXEN1P',altitude:22000,speed:280,rate:500,navigation:navigation(f,'RIXEN1P',280)};
- advanceSimulation(s,1);assert.equal(f.command.navigation.index,1);assert.ok(f.altitude<22000&&f.altitude>21990);assert.equal(f.command.altitude,22000);
+ advanceSimulation(s,1);assert.equal(f.command.navigation.index,1);assert.equal(f.altitude,22000);assert.equal(f.command.altitude,22000);assert.equal(f.pilot.targetAltitude,22000);assert.equal(f.pilot.targetSpeed,280);
  assert.equal(s.stats.altitudeViolations,1);assert.equal(s.stats.speedViolations,1);
  assert.equal(navigation(f,'RIXEN1P',280).index,1);
 });
-test('full-fleet requests stay compact and fit the provider envelope',()=>{
+test('legacy fixture with restored geometry/performance fits the unchanged byte envelope',()=>{
  for(const airborne of [false,true]){
   const s=createSimulation(0,42);if(airborne)for(const f of s.flights)if(f.phase==='taxi_out')f.phase='departure';
   const plan=makePlan(s);plan.state.trigger={reason:'scheduled',at:s.elapsed};
   const batches=batchPlans(plan),requests=batches.map(p=>buildRequest(p,'jev-1.13.0')),bytes=requests.map(r=>Buffer.byteLength(JSON.stringify(r)));
   assert.ok(bytes.every(n=>n+4096<=79000));
   assert.equal(requests.reduce((n,r)=>n+Object.keys(r.questions).length,0),airborne?400:403);
-  assert.ok(batches.length<=(airborne?10:5));
-  assert.ok(bytes.reduce((a,b)=>a+b,0)<=(airborne?680000:390000));
+  assert.ok(batches.length<=(airborne?10:6));
+  assert.ok(bytes.reduce((a,b)=>a+b,0)<=(airborne?720000:440000));
  }
 });
 
@@ -37,7 +37,7 @@ test('early ILS descent is measured without changing the unsafe target',()=>{
  const f=s.flights[50];f.phase='approach';f.lane=0;[f.x,f.y]=FIXES.GAZGE.point;f.altitude=2000;
  const route='ILS_16R_GAZGE';f.command={route,altitude:202,speed:220,rate:500,navigation:navigation(f,route,220)};
  advanceSimulation(s,1);assert.ok(s.incidents.some(i=>i.rule==='descent below FAP level before crossing FAP'));
- assert.equal(f.command.altitude,202);assert.ok(f.altitude>2000);assert.ok(f.pilot.unable.length>0);assert.ok(f.pilot.targetAltitude>=3000);
+ assert.equal(f.command.altitude,202);assert.ok(f.altitude<2000);assert.ok(f.pilot.constraintWarnings.includes('FAP level until crossing'));assert.equal(f.pilot.targetAltitude,202);
 });
 
 test('SID gradient applies during commanded climb, not cleared level flight',()=>{

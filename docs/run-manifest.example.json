@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "status": "draft-unfrozen",
+  "runId": null,
+  "scope": "airborne-handoff-v1",
+  "seed": null,
+  "sourceFingerprint": null,
+  "versions": {
+    "prompt": "jev-atc-airborne-observe-v2",
+    "context": "compact-state-geometry-v2",
+    "control": "jev-command-observe-v1",
+    "measurement": "swept-terminal-v2",
+    "evaluation": "vector-observational-v2"
+  },
+  "requestedModel": "jev-1.13.0",
+  "initialStateSha256": null,
+  "stopping": {
+    "targetSimulatedSeconds": null,
+    "maxWallSeconds": null,
+    "maxTotalInputTokens": null,
+    "stopForFavorableResults": false
+  },
+  "preregistered": false,
+  "independentRuleReview": false,
+  "note": "Generate locally after validation with scripts/freeze-run.mjs. Not an authorized study or deployment."
+}

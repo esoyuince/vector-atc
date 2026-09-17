@@ -1,7 +1,16 @@
 const english={
+"Hava kontrolune katilim bekliyor":"Awaiting airborne handoff",
+"AI girdi boyutu siniri":"AI input size limit",
+"Arsiv hatasi - deney durduruldu":"Archive error - experiment stopped",
+"Arastirma kosusu durduruldu":"Research run stopped",
+
+ "Prosedür dışı komut":"Out-of-procedure command",
+ "Prosedür dışı komutlar":"Out-of-procedure commands",
 "Pilot / otopilot":"Pilot / autopilot",
 "Yatış / yer hızı":"Bank / ground speed",
 "Pilot kısıtı: ":"Pilot constraint: ",
+"Prosedür uyarısı (komut değişmez): ":"Procedure warning (command unchanged): ",
+"Fiziksel sınır: ":"Physical limit: ",
 "Yakınlaşma tahmini nedeniyle erken TypeSafe çağrısı":"Early TypeSafe request triggered by a predicted conflict",
 "to-fix":"To holding fix",
 "entry-out":"Holding entry outbound",
@@ -14,7 +23,7 @@ const english={
 "published altitude floor":"published altitude floor",
 "published altitude ceiling":"published altitude ceiling",
 "FAP level until crossing":"FAP level until crossing",
-"Yerel ATC yok. Pilot modeli AI talimatlarını fizik ve prosedür sınırlarıyla uygular; yakınlaşma tahmini yeni AI talimatı ister. AI beklenirken deney zamanı durur. Son izleyici ayrılınca en geç 20 saniyede uyur.":"No local ATC. The pilot follows AI clearances within physics and procedure constraints; conflict prediction requests new AI instructions. Simulation time pauses during AI calls and within 20 seconds of the last viewer leaving.",
+"Yerel ATC yok. Pilot sayısal AI hedeflerini değiştirmez; prosedür ihlalleri ölçülür. Fizik sınırları korunur. AI beklenirken deney zamanı durur. Son izleyici ayrılınca en geç 20 saniyede uyur.":"No local ATC. Numeric AI targets are not replaced; procedure violations are measured. Physical limits remain. Simulation time pauses during AI calls and within 20 seconds of the last viewer leaving.",
 
  "Yayımlanmış LTFM rotaları · sentetik trafik · kaza sayıları gerçek dünya tahmini değildir":"Published LTFM routes · synthetic traffic · accident counts are not real-world forecasts",
  "Prosedür ihlali":"Procedure violation",
@@ -135,7 +144,7 @@ const english={
  "AI yanıtı yok · deney duraklatıldı": "No AI response · experiment paused",
  " uçak · ": " aircraft · "
 };
-const pilotTurkish={"to-fix": "Bekleme noktasına uçuş", "entry-out": "Beklemeye giriş / gidiş", "entry-return": "Beklemeye giriş / dönüş", "turn-out": "Gidiş dönüşü", "turn-in": "Geliş dönüşü", "outbound": "Gidiş bacağı", "inbound": "Geliş bacağı", "holding minimum altitude": "Bekleme asgari irtifası", "published altitude floor": "Yayımlanmış alt irtifa sınırı", "published altitude ceiling": "Yayımlanmış üst irtifa sınırı", "FAP level until crossing": "FAP geçişine kadar irtifa koruma", "pilot speed limit": "Pilot hız sınırı", "SID climb gradient": "SID tırmanış gradyanı"};
+const pilotTurkish={"Hava kontrolune katilim bekliyor":"Hava kontrolüne katılım bekliyor", "AI girdi boyutu siniri":"AI girdi boyutu sınırı", "Arsiv hatasi - deney durduruldu":"Arşiv hatası · deney durduruldu", "Arastirma kosusu durduruldu":"Araştırma koşusu durduruldu", "Hava kontrolune katilim bekliyor":"Hava kontrolüne katılım bekliyor","AI girdi boyutu siniri":"AI girdi boyutu sınırı","Arsiv hatasi - deney durduruldu":"Arşiv hatası - deney durduruldu","Arastirma kosusu durduruldu":"Araştırma koşusu durduruldu","to-fix": "Bekleme noktasına uçuş", "entry-out": "Beklemeye giriş / gidiş", "entry-return": "Beklemeye giriş / dönüş", "turn-out": "Gidiş dönüşü", "turn-in": "Geliş dönüşü", "outbound": "Gidiş bacağı", "inbound": "Geliş bacağı", "holding minimum altitude": "Bekleme asgari irtifası", "published altitude floor": "Yayımlanmış alt irtifa sınırı", "published altitude ceiling": "Yayımlanmış üst irtifa sınırı", "FAP level until crossing": "FAP geçişine kadar irtifa koruma", "pilot speed limit": "Pilot hız sınırı", "SID climb gradient": "SID tırmanış gradyanı", "holding speed limit": "Bekleme hız sınırı", "published speed constraint": "Yayımlanmış hız kısıtı", "low altitude speed limit": "Alçak irtifa hız sınırı", "vertical performance limit": "Dikey performans sınırı"};
 export const translator=language=>text=>language==='en'?(english[text]??text):(pilotTurkish[text]??text);
 const eventPattern=new RegExp(Object.keys(english).sort((a,b)=>b.length-a.length).map(k=>Array.from(k,c=>'.*+?^${}()|[]'.includes(c)||c.charCodeAt(0)===92?String.fromCharCode(92)+c:c).join('')).join('|'),'g');
 export function eventText(text,language){return language==='en'?text.replace(eventPattern,match=>english[match]):text;}
