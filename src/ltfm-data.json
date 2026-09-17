@@ -1,0 +1,1552 @@
+{
+  "id": "LTFM-SOUTH-v1",
+  "retrieved": "2026-09-17",
+  "name": "Istanbul Airport",
+  "icao": "LTFM",
+  "arp": [
+    41.27527778,
+    28.75194444
+  ],
+  "variation": 6.1,
+  "transitionAltitude": 12000,
+  "sectorRadiusNm": 110,
+  "runways": [
+    {
+      "id": "16R",
+      "opposite": "34L",
+      "lat": 41.29860278,
+      "lon": 28.70675278,
+      "endLat": 41.26484722,
+      "endLon": 28.70741944,
+      "elevation": 219,
+      "lengthM": 3750,
+      "headingTrue": 179.15,
+      "active": true,
+      "source": "AD_2.12",
+      "fap": "NEDBA",
+      "intercept": "SAMHI"
+    },
+    {
+      "id": "16L",
+      "opposite": "34R",
+      "lat": 41.29863056,
+      "lon": 28.70925833,
+      "endLat": 41.264875,
+      "endLon": 28.709925,
+      "elevation": 218,
+      "lengthM": 3750,
+      "headingTrue": 179.15,
+      "active": false,
+      "source": "AD_2.12"
+    },
+    {
+      "id": "17R",
+      "opposite": "35L",
+      "lat": 41.29880278,
+      "lon": 28.72453611,
+      "endLat": 41.26189444,
+      "endLon": 28.72525556,
+      "elevation": 202,
+      "lengthM": 4100,
+      "headingTrue": 179.15,
+      "active": false,
+      "source": "AD_2.12"
+    },
+    {
+      "id": "17L",
+      "opposite": "35R",
+      "lat": 41.29883056,
+      "lon": 28.72704444,
+      "endLat": 41.26192222,
+      "endLon": 28.72776111,
+      "elevation": 202,
+      "lengthM": 4100,
+      "headingTrue": 179.15,
+      "active": true,
+      "source": "AD_2.12",
+      "fap": "USROF",
+      "intercept": "EFQER"
+    },
+    {
+      "id": "18",
+      "opposite": "36",
+      "lat": 41.28979167,
+      "lon": 28.75617778,
+      "endLat": 41.26224444,
+      "endLon": 28.7567,
+      "elevation": 221,
+      "lengthM": 3060,
+      "headingTrue": 179.15,
+      "active": true,
+      "source": "AD_2.12",
+      "fap": "AVTEQ",
+      "intercept": "FUDDI"
+    }
+  ],
+  "fixes": {
+    "ENLEC": {
+      "lat": 41.47481111,
+      "lon": 29.09088889,
+      "source": "STAR_01_A"
+    },
+    "FM642": {
+      "lat": 41.32371944,
+      "lon": 30.135775,
+      "source": "STAR_01_A"
+    },
+    "EPEKI": {
+      "lat": 40.91381111,
+      "lon": 30.22059722,
+      "source": "STAR_01_A"
+    },
+    "FM643": {
+      "lat": 41.44149444,
+      "lon": 30.05274444,
+      "source": "STAR_01_A"
+    },
+    "ERSEN": {
+      "lat": 40.86555556,
+      "lon": 30.66611111,
+      "source": "STAR_01_A"
+    },
+    "FM644": {
+      "lat": 41.57576389,
+      "lon": 29.95768056,
+      "source": "STAR_01_A"
+    },
+    "FM450": {
+      "lat": 41.19198056,
+      "lon": 30.16312778,
+      "source": "STAR_01_A"
+    },
+    "FM645": {
+      "lat": 41.71533889,
+      "lon": 29.85847222,
+      "source": "STAR_01_A"
+    },
+    "FM456": {
+      "lat": 41.84131111,
+      "lon": 29.76850278,
+      "source": "STAR_01_A"
+    },
+    "FM653": {
+      "lat": 41.55718889,
+      "lon": 30.51794167,
+      "source": "STAR_01_A"
+    },
+    "FM457": {
+      "lat": 41.84683056,
+      "lon": 29.57777222,
+      "source": "STAR_01_A"
+    },
+    "FM654": {
+      "lat": 41.59200556,
+      "lon": 30.34656389,
+      "source": "STAR_01_A"
+    },
+    "FM458": {
+      "lat": 41.79901944,
+      "lon": 29.46030278,
+      "source": "STAR_01_A"
+    },
+    "FM655": {
+      "lat": 41.70940833,
+      "lon": 30.25943889,
+      "source": "STAR_01_A"
+    },
+    "FM510": {
+      "lat": 41.63602778,
+      "lon": 29.45664722,
+      "source": "STAR_01_A"
+    },
+    "FM656": {
+      "lat": 41.79739444,
+      "lon": 30.19264722,
+      "source": "STAR_01_A"
+    },
+    "FM511": {
+      "lat": 41.53593056,
+      "lon": 29.45848611,
+      "source": "STAR_01_A"
+    },
+    "FM670": {
+      "lat": 41.29771944,
+      "lon": 30.52485556,
+      "source": "STAR_01_A"
+    },
+    "FM512": {
+      "lat": 41.43887778,
+      "lon": 29.42583611,
+      "source": "STAR_01_A"
+    },
+    "FM671": {
+      "lat": 41.36983889,
+      "lon": 30.289075,
+      "source": "STAR_01_A"
+    },
+    "FM513": {
+      "lat": 41.35145278,
+      "lon": 29.36105,
+      "source": "STAR_01_A"
+    },
+    "FM966": {
+      "lat": 41.93515833,
+      "lon": 28.982525,
+      "source": "STAR_01_A"
+    },
+    "FM514": {
+      "lat": 41.27956389,
+      "lon": 29.26862778,
+      "source": "STAR_01_A"
+    },
+    "FM967": {
+      "lat": 41.90607222,
+      "lon": 29.261125,
+      "source": "STAR_01_A"
+    },
+    "FM515": {
+      "lat": 41.397075,
+      "lon": 29.14476667,
+      "source": "STAR_01_A"
+    },
+    "NUGBA": {
+      "lat": 41.59111111,
+      "lon": 30.67416667,
+      "source": "STAR_01_A"
+    },
+    "FM516": {
+      "lat": 41.48838611,
+      "lon": 29.048125,
+      "source": "STAR_01_A"
+    },
+    "GAZGE": {
+      "lat": 41.57961944,
+      "lon": 28.95121111,
+      "source": "IAC_17"
+    },
+    "FM551": {
+      "lat": 40.90075278,
+      "lon": 30.43079444,
+      "source": "STAR_01_A"
+    },
+    "RIXEN": {
+      "lat": 42.08222222,
+      "lon": 28.76611111,
+      "source": "STAR_01_A"
+    },
+    "FM641": {
+      "lat": 41.07819444,
+      "lon": 30.186675,
+      "source": "STAR_01_A"
+    },
+    "KANQO": {
+      "lat": 41.22513611,
+      "lon": 30.76008333,
+      "source": "STAR_01_A"
+    },
+    "ADMIV": {
+      "lat": 40.77141944,
+      "lon": 27.70423611,
+      "source": "SID_01_A"
+    },
+    "FM066": {
+      "lat": 41.875825,
+      "lon": 27.48924444,
+      "source": "SID_01_A"
+    },
+    "ASGAX": {
+      "lat": 40.91123333,
+      "lon": 28.69274444,
+      "source": "SID_01_A"
+    },
+    "FM072": {
+      "lat": 41.18281667,
+      "lon": 28.82340278,
+      "source": "SID_01_A"
+    },
+    "BARPE": {
+      "lat": 40.92611111,
+      "lon": 26.97805556,
+      "source": "SID_01_A"
+    },
+    "FM073": {
+      "lat": 41.18408611,
+      "lon": 28.94480833,
+      "source": "SID_01_A"
+    },
+    "FM047": {
+      "lat": 41.18082778,
+      "lon": 28.64516111,
+      "source": "SID_01_A"
+    },
+    "FM074": {
+      "lat": 41.10256389,
+      "lon": 28.81826944,
+      "source": "SID_01_A"
+    },
+    "FM048": {
+      "lat": 41.17936667,
+      "lon": 28.5193,
+      "source": "SID_01_A"
+    },
+    "GUEME": {
+      "lat": 40.75828611,
+      "lon": 27.55400833,
+      "source": "SID_01_A"
+    },
+    "FM049": {
+      "lat": 41.29610556,
+      "lon": 28.51681111,
+      "source": "SID_01_A"
+    },
+    "HANCI": {
+      "lat": 41.30784722,
+      "lon": 28.942975,
+      "source": "SID_01_A"
+    },
+    "FM051": {
+      "lat": 41.18175556,
+      "lon": 28.72931389,
+      "source": "SID_01_A"
+    },
+    "IBLAL": {
+      "lat": 41.9875,
+      "lon": 28.3375,
+      "source": "SID_01_A"
+    },
+    "FM054": {
+      "lat": 41.121,
+      "lon": 28.65575278,
+      "source": "SID_01_A"
+    },
+    "INPIK": {
+      "lat": 40.793825,
+      "lon": 27.96595556,
+      "source": "SID_01_A"
+    },
+    "FM056": {
+      "lat": 41.07525556,
+      "lon": 28.39278333,
+      "source": "SID_01_A"
+    },
+    "IVGUS": {
+      "lat": 40.56888889,
+      "lon": 27.57777778,
+      "source": "SID_01_A"
+    },
+    "FM057": {
+      "lat": 40.97558611,
+      "lon": 27.83265278,
+      "source": "SID_01_A"
+    },
+    "ORIAC": {
+      "lat": 40.88479444,
+      "lon": 27.33667222,
+      "source": "SID_01_A"
+    },
+    "FM060": {
+      "lat": 41.17978611,
+      "lon": 28.55433056,
+      "source": "SID_01_A"
+    },
+    "REDGI": {
+      "lat": 41.3076,
+      "lon": 28.551675,
+      "source": "SID_01_A"
+    },
+    "FM061": {
+      "lat": 41.4379,
+      "lon": 28.57134444,
+      "source": "SID_01_A"
+    },
+    "REZOV": {
+      "lat": 41.98333333,
+      "lon": 28.11055556,
+      "source": "SID_01_A"
+    },
+    "FM062": {
+      "lat": 41.76151944,
+      "lon": 28.56471111,
+      "source": "SID_01_A"
+    },
+    "TETPU": {
+      "lat": 40.83685,
+      "lon": 28.48995,
+      "source": "SID_01_A"
+    },
+    "FM063": {
+      "lat": 41.77165278,
+      "lon": 28.37935556,
+      "source": "SID_01_A"
+    },
+    "TIBNU": {
+      "lat": 40.96543889,
+      "lon": 28.80953333,
+      "source": "IAC_17"
+    },
+    "FM064": {
+      "lat": 41.78148333,
+      "lon": 28.19393611,
+      "source": "SID_01_A"
+    },
+    "TUDBU": {
+      "lat": 41.96666667,
+      "lon": 27.77694444,
+      "source": "SID_01_A"
+    },
+    "FM065": {
+      "lat": 41.859575,
+      "lon": 28.01879722,
+      "source": "SID_01_A"
+    },
+    "VADEN": {
+      "lat": 42.06555556,
+      "lon": 27.21611111,
+      "source": "SID_01_A"
+    },
+    "SAMHI": {
+      "lat": 41.56208333,
+      "lon": 28.70155,
+      "source": "IAC_13"
+    },
+    "OLHIM": {
+      "lat": 41.60503333,
+      "lon": 28.66736667,
+      "source": "IAC_13"
+    },
+    "UZAZE": {
+      "lat": 41.60536389,
+      "lon": 28.58173056,
+      "source": "IAC_13"
+    },
+    "INSTA": {
+      "lat": 41.566675,
+      "lon": 28.48333611,
+      "source": "IAC_17"
+    },
+    "FIFAW": {
+      "lat": 41.67303889,
+      "lon": 28.71976389,
+      "source": "IAC_15"
+    },
+    "RUQFE": {
+      "lat": 41.672725,
+      "lon": 28.83432778,
+      "source": "IAC_13"
+    },
+    "ULQAL": {
+      "lat": 41.72309167,
+      "lon": 28.87185833,
+      "source": "IAC_15"
+    },
+    "NOQAW": {
+      "lat": 41.63261667,
+      "lon": 28.68720278,
+      "source": "IAC_15"
+    },
+    "USROF": {
+      "lat": 41.547975,
+      "lon": 28.72219722,
+      "source": "IAC_15"
+    },
+    "IZQEP": {
+      "lat": 41.65212222,
+      "lon": 28.55263889,
+      "source": "IAC_15"
+    },
+    "EFQER": {
+      "lat": 41.58966389,
+      "lon": 28.72138611,
+      "source": "IAC_15"
+    },
+    "NASVU": {
+      "lat": 41.123925,
+      "lon": 28.73044167,
+      "source": "IAC_15"
+    },
+    "ERWAZ": {
+      "lat": 40.99994444,
+      "lon": 28.52716389,
+      "source": "IAC_15"
+    },
+    "ILCEH": {
+      "lat": 41.66746667,
+      "lon": 28.76136667,
+      "source": "IAC_15"
+    },
+    "IRDED": {
+      "lat": 40.96559167,
+      "lon": 28.31176944,
+      "source": "IAC_15"
+    },
+    "BEBJE": {
+      "lat": 41.64314167,
+      "lon": 28.84827222,
+      "source": "IAC_15"
+    },
+    "OZNUQ": {
+      "lat": 41.64127778,
+      "lon": 28.71615833,
+      "source": "IAC_17"
+    },
+    "GITVO": {
+      "lat": 41.66987222,
+      "lon": 28.60845556,
+      "source": "IAC_17"
+    },
+    "DIKIZ": {
+      "lat": 41.12388056,
+      "lon": 28.75932222,
+      "source": "IAC_17"
+    },
+    "FUDDI": {
+      "lat": 41.59831667,
+      "lon": 28.750325,
+      "source": "IAC_17"
+    },
+    "OMHET": {
+      "lat": 41.64871667,
+      "lon": 28.78786111,
+      "source": "IAC_17"
+    },
+    "AVTEQ": {
+      "lat": 41.48507778,
+      "lon": 28.752475,
+      "source": "IAC_17"
+    },
+    "ISSIZ": {
+      "lat": 41.43236667,
+      "lon": 28.753475,
+      "source": "IAC_17"
+    },
+    "EZGEC": {
+      "lat": 41.37317222,
+      "lon": 28.7546,
+      "source": "IAC_17"
+    },
+    "YOYOC": {
+      "lat": 41.61435278,
+      "lon": 28.86920833,
+      "source": "IAC_17"
+    },
+    "NEDBA": {
+      "lat": 41.44201389,
+      "lon": 28.70391667,
+      "source": "IAC_13"
+    },
+    "MIVPA": {
+      "lat": 41.38198333,
+      "lon": 28.70510278,
+      "source": "IAC_13"
+    },
+    "ELNIN": {
+      "lat": 41.49560556,
+      "lon": 28.72321667,
+      "source": "IAC_15"
+    },
+    "LADUX": {
+      "lat": 41.44223889,
+      "lon": 28.72425556,
+      "source": "IAC_15"
+    },
+    "ATBES": {
+      "lat": 41.38220833,
+      "lon": 28.72541944,
+      "source": "IAC_15"
+    },
+    "FM165": {
+      "lat": 41.24514444,
+      "lon": 28.46192222,
+      "source": "IAC_13"
+    },
+    "FM166": {
+      "lat": 41.46377222,
+      "lon": 28.290275,
+      "source": "IAC_13"
+    },
+    "THR_16R": {
+      "lat": 41.29860278,
+      "lon": 28.70675278,
+      "source": "AD_2.12"
+    },
+    "THR_17L": {
+      "lat": 41.29883056,
+      "lon": 28.72704444,
+      "source": "AD_2.12"
+    },
+    "THR_18": {
+      "lat": 41.28979167,
+      "lon": 28.75617778,
+      "source": "AD_2.12"
+    }
+  },
+  "procedures": {
+    "RIXEN1P": {
+      "id": "RIXEN1P",
+      "kind": "STAR",
+      "legs": [
+        {
+          "fix": "RIXEN",
+          "maxAltitude": 19000,
+          "maxSpeed": 250
+        },
+        {
+          "fix": "FM966",
+          "minAltitude": 14000,
+          "maxAltitude": 16000
+        },
+        {
+          "fix": "FM967"
+        },
+        {
+          "fix": "FM458",
+          "altitude": 10000,
+          "speed": 230
+        },
+        {
+          "fix": "FM510"
+        },
+        {
+          "fix": "FM511"
+        },
+        {
+          "fix": "FM512"
+        },
+        {
+          "fix": "FM513"
+        },
+        {
+          "fix": "FM514",
+          "altitude": 10000
+        },
+        {
+          "fix": "FM515"
+        },
+        {
+          "fix": "FM516"
+        },
+        {
+          "fix": "GAZGE",
+          "minAltitude": 4000,
+          "maxAltitude": 5000,
+          "speed": 220
+        }
+      ],
+      "source": "STAR_01"
+    },
+    "ERSEN1R": {
+      "id": "ERSEN1R",
+      "kind": "STAR",
+      "legs": [
+        {
+          "fix": "ERSEN"
+        },
+        {
+          "fix": "FM551"
+        },
+        {
+          "fix": "EPEKI",
+          "maxAltitude": 28000,
+          "maxSpeed": 280
+        },
+        {
+          "fix": "FM641"
+        },
+        {
+          "fix": "FM450"
+        },
+        {
+          "fix": "FM642",
+          "maxAltitude": 26000
+        },
+        {
+          "fix": "FM643"
+        },
+        {
+          "fix": "FM644",
+          "maxSpeed": 250
+        },
+        {
+          "fix": "FM645"
+        },
+        {
+          "fix": "FM456",
+          "minAltitude": 12000,
+          "maxAltitude": 14000
+        },
+        {
+          "fix": "FM457"
+        },
+        {
+          "fix": "FM458",
+          "altitude": 10000,
+          "speed": 230
+        },
+        {
+          "fix": "FM510"
+        },
+        {
+          "fix": "FM511"
+        },
+        {
+          "fix": "FM512"
+        },
+        {
+          "fix": "FM513"
+        },
+        {
+          "fix": "FM514",
+          "altitude": 10000
+        },
+        {
+          "fix": "FM515"
+        },
+        {
+          "fix": "FM516"
+        },
+        {
+          "fix": "GAZGE",
+          "minAltitude": 4000,
+          "maxAltitude": 5000,
+          "speed": 220
+        }
+      ],
+      "source": "STAR_01"
+    },
+    "TUDBU1F": {
+      "id": "TUDBU1F",
+      "kind": "SID",
+      "legs": [
+        {
+          "fix": "FM047",
+          "minAltitude": 2100,
+          "maxSpeed": 250
+        },
+        {
+          "fix": "FM048"
+        },
+        {
+          "fix": "FM049"
+        },
+        {
+          "fix": "FM061"
+        },
+        {
+          "fix": "FM062"
+        },
+        {
+          "fix": "FM063"
+        },
+        {
+          "fix": "FM064"
+        },
+        {
+          "fix": "FM065"
+        },
+        {
+          "fix": "TUDBU"
+        }
+      ],
+      "runway": "16R",
+      "initialClimb": 4000,
+      "minTurnAltitude": 900,
+      "minClimbFtPerNm": 304,
+      "climbGradientUntil": 8000,
+      "source": "SID_01_A"
+    },
+    "VADEN1F": {
+      "id": "VADEN1F",
+      "kind": "SID",
+      "legs": [
+        {
+          "fix": "FM047",
+          "minAltitude": 2100,
+          "maxSpeed": 250
+        },
+        {
+          "fix": "FM048"
+        },
+        {
+          "fix": "FM049"
+        },
+        {
+          "fix": "FM061"
+        },
+        {
+          "fix": "FM062"
+        },
+        {
+          "fix": "FM063"
+        },
+        {
+          "fix": "FM064"
+        },
+        {
+          "fix": "FM065"
+        },
+        {
+          "fix": "FM066"
+        },
+        {
+          "fix": "VADEN"
+        }
+      ],
+      "runway": "16R",
+      "initialClimb": 4000,
+      "minTurnAltitude": 900,
+      "minClimbFtPerNm": 304,
+      "climbGradientUntil": 8000,
+      "source": "SID_01_A"
+    },
+    "TUDBU1G": {
+      "id": "TUDBU1G",
+      "kind": "SID",
+      "legs": [
+        {
+          "fix": "FM051",
+          "minAltitude": 1800,
+          "maxSpeed": 250
+        },
+        {
+          "fix": "FM060"
+        },
+        {
+          "fix": "REDGI"
+        },
+        {
+          "fix": "FM061"
+        },
+        {
+          "fix": "FM062"
+        },
+        {
+          "fix": "FM063"
+        },
+        {
+          "fix": "FM064"
+        },
+        {
+          "fix": "FM065"
+        },
+        {
+          "fix": "TUDBU"
+        }
+      ],
+      "runway": "17L",
+      "initialClimb": 5000,
+      "minTurnAltitude": 760,
+      "minClimbFtPerNm": 304,
+      "climbGradientUntil": 8000,
+      "source": "SID_01_A"
+    },
+    "VADEN1G": {
+      "id": "VADEN1G",
+      "kind": "SID",
+      "legs": [
+        {
+          "fix": "FM051",
+          "minAltitude": 1800,
+          "maxSpeed": 250
+        },
+        {
+          "fix": "FM060"
+        },
+        {
+          "fix": "REDGI"
+        },
+        {
+          "fix": "FM061"
+        },
+        {
+          "fix": "FM062"
+        },
+        {
+          "fix": "FM063"
+        },
+        {
+          "fix": "FM064"
+        },
+        {
+          "fix": "FM065"
+        },
+        {
+          "fix": "FM066"
+        },
+        {
+          "fix": "VADEN"
+        }
+      ],
+      "runway": "17L",
+      "initialClimb": 5000,
+      "minTurnAltitude": 760,
+      "minClimbFtPerNm": 304,
+      "climbGradientUntil": 8000,
+      "source": "SID_01_A"
+    },
+    "TUDBU1H": {
+      "id": "TUDBU1H",
+      "kind": "SID",
+      "legs": [
+        {
+          "fix": "FM072",
+          "minAltitude": 2030,
+          "maxSpeed": 250
+        },
+        {
+          "fix": "FM073"
+        },
+        {
+          "fix": "HANCI"
+        },
+        {
+          "fix": "FM061"
+        },
+        {
+          "fix": "FM062"
+        },
+        {
+          "fix": "FM063"
+        },
+        {
+          "fix": "FM064"
+        },
+        {
+          "fix": "FM065"
+        },
+        {
+          "fix": "TUDBU"
+        }
+      ],
+      "runway": "18",
+      "initialClimb": 8000,
+      "minTurnAltitude": 760,
+      "minClimbFtPerNm": 304,
+      "climbGradientUntil": 8000,
+      "source": "SID_01_A"
+    },
+    "VADEN1H": {
+      "id": "VADEN1H",
+      "kind": "SID",
+      "legs": [
+        {
+          "fix": "FM072",
+          "minAltitude": 2030,
+          "maxSpeed": 250
+        },
+        {
+          "fix": "FM073"
+        },
+        {
+          "fix": "HANCI"
+        },
+        {
+          "fix": "FM061"
+        },
+        {
+          "fix": "FM062"
+        },
+        {
+          "fix": "FM063"
+        },
+        {
+          "fix": "FM064"
+        },
+        {
+          "fix": "FM065"
+        },
+        {
+          "fix": "FM066"
+        },
+        {
+          "fix": "VADEN"
+        }
+      ],
+      "runway": "18",
+      "initialClimb": 8000,
+      "minTurnAltitude": 760,
+      "minClimbFtPerNm": 304,
+      "climbGradientUntil": 8000,
+      "source": "SID_01_A"
+    },
+    "ILS_16R_GAZGE": {
+      "id": "ILS_16R_GAZGE",
+      "kind": "APP",
+      "legs": [
+        {
+          "fix": "GAZGE",
+          "minAltitude": 4000,
+          "maxAltitude": 5000,
+          "speed": 220
+        },
+        {
+          "fix": "RUQFE"
+        },
+        {
+          "fix": "FIFAW",
+          "altitude": 5000
+        },
+        {
+          "fix": "SAMHI",
+          "altitude": 3000,
+          "speed": 205
+        },
+        {
+          "fix": "NEDBA",
+          "altitude": 3000,
+          "speed": 180
+        },
+        {
+          "fix": "MIVPA",
+          "altitude": 1870,
+          "speed": 160
+        },
+        {
+          "fix": "THR_16R"
+        }
+      ],
+      "runway": "16R",
+      "glideAngle": 3,
+      "fap": "NEDBA",
+      "source": "IAC_13"
+    },
+    "ILS_16R_INSTA": {
+      "id": "ILS_16R_INSTA",
+      "kind": "APP",
+      "legs": [
+        {
+          "fix": "INSTA",
+          "minAltitude": 4000,
+          "maxAltitude": 5000,
+          "speed": 220
+        },
+        {
+          "fix": "UZAZE",
+          "minAltitude": 3000
+        },
+        {
+          "fix": "OLHIM",
+          "speed": 210
+        },
+        {
+          "fix": "SAMHI",
+          "altitude": 3000,
+          "speed": 205
+        },
+        {
+          "fix": "NEDBA",
+          "altitude": 3000,
+          "speed": 180
+        },
+        {
+          "fix": "MIVPA",
+          "altitude": 1870,
+          "speed": 160
+        },
+        {
+          "fix": "THR_16R"
+        }
+      ],
+      "runway": "16R",
+      "glideAngle": 3,
+      "fap": "NEDBA",
+      "source": "IAC_13"
+    },
+    "ILS_16R_ULQAL": {
+      "id": "ILS_16R_ULQAL",
+      "kind": "APP",
+      "legs": [
+        {
+          "fix": "ULQAL",
+          "minAltitude": 6000,
+          "maxAltitude": 7000,
+          "speed": 220
+        },
+        {
+          "fix": "RUQFE"
+        },
+        {
+          "fix": "FIFAW",
+          "altitude": 5000
+        },
+        {
+          "fix": "SAMHI",
+          "altitude": 3000,
+          "speed": 205
+        },
+        {
+          "fix": "NEDBA",
+          "altitude": 3000,
+          "speed": 180
+        },
+        {
+          "fix": "MIVPA",
+          "altitude": 1870,
+          "speed": 160
+        },
+        {
+          "fix": "THR_16R"
+        }
+      ],
+      "runway": "16R",
+      "glideAngle": 3,
+      "fap": "NEDBA",
+      "source": "IAC_13"
+    },
+    "ILS_17L_GAZGE": {
+      "id": "ILS_17L_GAZGE",
+      "kind": "APP",
+      "legs": [
+        {
+          "fix": "GAZGE",
+          "altitude": 5000,
+          "speed": 220
+        },
+        {
+          "fix": "BEBJE"
+        },
+        {
+          "fix": "ILCEH"
+        },
+        {
+          "fix": "EFQER",
+          "altitude": 5000,
+          "speed": 210
+        },
+        {
+          "fix": "USROF",
+          "altitude": 5000,
+          "speed": 205
+        },
+        {
+          "fix": "ELNIN",
+          "altitude": 4000,
+          "speed": 195
+        },
+        {
+          "fix": "LADUX",
+          "altitude": 3000,
+          "speed": 180
+        },
+        {
+          "fix": "ATBES",
+          "altitude": 1850,
+          "speed": 160
+        },
+        {
+          "fix": "THR_17L"
+        }
+      ],
+      "runway": "17L",
+      "glideAngle": 3,
+      "fap": "USROF",
+      "source": "IAC_15"
+    },
+    "ILS_17L_INSTA": {
+      "id": "ILS_17L_INSTA",
+      "kind": "APP",
+      "legs": [
+        {
+          "fix": "INSTA",
+          "altitude": 5000,
+          "speed": 220
+        },
+        {
+          "fix": "IZQEP"
+        },
+        {
+          "fix": "NOQAW",
+          "altitude": 5000,
+          "speed": 210
+        },
+        {
+          "fix": "EFQER",
+          "altitude": 5000,
+          "speed": 210
+        },
+        {
+          "fix": "USROF",
+          "altitude": 5000,
+          "speed": 205
+        },
+        {
+          "fix": "ELNIN",
+          "altitude": 4000,
+          "speed": 195
+        },
+        {
+          "fix": "LADUX",
+          "altitude": 3000,
+          "speed": 180
+        },
+        {
+          "fix": "ATBES",
+          "altitude": 1850,
+          "speed": 160
+        },
+        {
+          "fix": "THR_17L"
+        }
+      ],
+      "runway": "17L",
+      "glideAngle": 3,
+      "fap": "USROF",
+      "source": "IAC_15"
+    },
+    "ILS_17L_ULQAL": {
+      "id": "ILS_17L_ULQAL",
+      "kind": "APP",
+      "legs": [
+        {
+          "fix": "ULQAL",
+          "minAltitude": 6000,
+          "maxAltitude": 7000,
+          "speed": 220
+        },
+        {
+          "fix": "FIFAW",
+          "altitude": 5000
+        },
+        {
+          "fix": "NOQAW",
+          "altitude": 5000,
+          "speed": 210
+        },
+        {
+          "fix": "EFQER",
+          "altitude": 5000,
+          "speed": 210
+        },
+        {
+          "fix": "USROF",
+          "altitude": 5000,
+          "speed": 205
+        },
+        {
+          "fix": "ELNIN",
+          "altitude": 4000,
+          "speed": 195
+        },
+        {
+          "fix": "LADUX",
+          "altitude": 3000,
+          "speed": 180
+        },
+        {
+          "fix": "ATBES",
+          "altitude": 1850,
+          "speed": 160
+        },
+        {
+          "fix": "THR_17L"
+        }
+      ],
+      "runway": "17L",
+      "glideAngle": 3,
+      "fap": "USROF",
+      "source": "IAC_15"
+    },
+    "ILS_18_GAZGE": {
+      "id": "ILS_18_GAZGE",
+      "kind": "APP",
+      "legs": [
+        {
+          "fix": "GAZGE",
+          "minAltitude": 4000,
+          "maxAltitude": 5000,
+          "speed": 220
+        },
+        {
+          "fix": "YOYOC"
+        },
+        {
+          "fix": "OMHET",
+          "altitude": 4000
+        },
+        {
+          "fix": "FUDDI",
+          "altitude": 4000,
+          "speed": 210
+        },
+        {
+          "fix": "AVTEQ",
+          "altitude": 4000,
+          "speed": 195
+        },
+        {
+          "fix": "ISSIZ",
+          "altitude": 3000,
+          "speed": 180
+        },
+        {
+          "fix": "EZGEC",
+          "altitude": 1870,
+          "speed": 160
+        },
+        {
+          "fix": "THR_18"
+        }
+      ],
+      "runway": "18",
+      "glideAngle": 3,
+      "fap": "AVTEQ",
+      "source": "IAC_17"
+    },
+    "ILS_18_INSTA": {
+      "id": "ILS_18_INSTA",
+      "kind": "APP",
+      "legs": [
+        {
+          "fix": "INSTA",
+          "minAltitude": 4000,
+          "maxAltitude": 5000,
+          "speed": 220
+        },
+        {
+          "fix": "GITVO"
+        },
+        {
+          "fix": "OZNUQ"
+        },
+        {
+          "fix": "FUDDI",
+          "altitude": 4000,
+          "speed": 210
+        },
+        {
+          "fix": "AVTEQ",
+          "altitude": 4000,
+          "speed": 195
+        },
+        {
+          "fix": "ISSIZ",
+          "altitude": 3000,
+          "speed": 180
+        },
+        {
+          "fix": "EZGEC",
+          "altitude": 1870,
+          "speed": 160
+        },
+        {
+          "fix": "THR_18"
+        }
+      ],
+      "runway": "18",
+      "glideAngle": 3,
+      "fap": "AVTEQ",
+      "source": "IAC_17"
+    },
+    "ILS_18_ULQAL": {
+      "id": "ILS_18_ULQAL",
+      "kind": "APP",
+      "legs": [
+        {
+          "fix": "ULQAL",
+          "minAltitude": 6000,
+          "maxAltitude": 7000,
+          "speed": 220
+        },
+        {
+          "fix": "OMHET",
+          "altitude": 4000
+        },
+        {
+          "fix": "FUDDI",
+          "altitude": 4000,
+          "speed": 210
+        },
+        {
+          "fix": "AVTEQ",
+          "altitude": 4000,
+          "speed": 195
+        },
+        {
+          "fix": "ISSIZ",
+          "altitude": 3000,
+          "speed": 180
+        },
+        {
+          "fix": "EZGEC",
+          "altitude": 1870,
+          "speed": 160
+        },
+        {
+          "fix": "THR_18"
+        }
+      ],
+      "runway": "18",
+      "glideAngle": 3,
+      "fap": "AVTEQ",
+      "source": "IAC_17"
+    },
+    "MISSED_16R": {
+      "id": "MISSED_16R",
+      "kind": "MISSED",
+      "legs": [
+        {
+          "fix": "FM165"
+        },
+        {
+          "fix": "FM166",
+          "altitude": 3000,
+          "maxSpeed": 230
+        }
+      ],
+      "runway": "16R",
+      "initialClimb": 3000,
+      "minTurnAltitude": 900,
+      "maxSpeed": 230,
+      "source": "IAC_13",
+      "hold": "FM166"
+    },
+    "MISSED_17L": {
+      "id": "MISSED_17L",
+      "kind": "MISSED",
+      "legs": [
+        {
+          "fix": "NASVU"
+        },
+        {
+          "fix": "ERWAZ"
+        },
+        {
+          "fix": "IRDED",
+          "altitude": 5000,
+          "maxSpeed": 230
+        }
+      ],
+      "runway": "17L",
+      "initialClimb": 5000,
+      "minTurnAltitude": 0,
+      "maxSpeed": 230,
+      "source": "IAC_15",
+      "hold": "IRDED"
+    },
+    "MISSED_18": {
+      "id": "MISSED_18",
+      "kind": "MISSED",
+      "legs": [
+        {
+          "fix": "DIKIZ"
+        },
+        {
+          "fix": "TIBNU",
+          "altitude": 4000,
+          "maxSpeed": 230
+        }
+      ],
+      "runway": "18",
+      "initialClimb": 4000,
+      "minTurnAltitude": 0,
+      "maxSpeed": 230,
+      "source": "IAC_17",
+      "hold": "TIBNU"
+    }
+  },
+  "holds": [
+    {
+      "fix": "GAZGE",
+      "inboundMag": 266,
+      "turn": "R",
+      "minAltitude": 4000,
+      "source": "IAC_13",
+      "legSeconds": 60,
+      "legTimeIsDemoAssumption": true
+    },
+    {
+      "fix": "INSTA",
+      "inboundMag": 66,
+      "turn": "L",
+      "minAltitude": 4000,
+      "source": "IAC_13",
+      "legSeconds": 60,
+      "legTimeIsDemoAssumption": true
+    },
+    {
+      "fix": "ULQAL",
+      "inboundMag": 157,
+      "turn": "R",
+      "minAltitude": 5000,
+      "source": "IAC_13",
+      "legSeconds": 60,
+      "legTimeIsDemoAssumption": true
+    },
+    {
+      "fix": "FM166",
+      "inboundMag": 53,
+      "turn": "R",
+      "minAltitude": 3000,
+      "source": "IAC_13",
+      "legSeconds": 60,
+      "legTimeIsDemoAssumption": true
+    },
+    {
+      "fix": "IRDED",
+      "inboundMag": 252,
+      "turn": "R",
+      "minAltitude": 5000,
+      "source": "IAC_15",
+      "legSeconds": 60,
+      "legTimeIsDemoAssumption": true
+    },
+    {
+      "fix": "TIBNU",
+      "inboundMag": 160,
+      "turn": "L",
+      "minAltitude": 4000,
+      "source": "IAC_17",
+      "legSeconds": 60,
+      "legTimeIsDemoAssumption": true
+    }
+  ],
+  "sources": [
+    {
+      "id": "AD_2.12",
+      "date": "2026-08-06",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_en.pdf",
+      "sha256": "74cb1c6a88139aa785df1bc930cf39a6d15ef1899f63270871a70a6d5d7beed5"
+    },
+    {
+      "id": "STAR_01",
+      "date": "2025-06-12",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_STAR_01_en.pdf",
+      "sha256": "5358189d2246bd2bfb65f586430c101a69d1d14d4b13ba67b2d8fa6e42dfe2d1"
+    },
+    {
+      "id": "STAR_01_A",
+      "date": "2025-05-15",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_STAR_01_A_en.pdf",
+      "sha256": "d95bf6b32d55ecf494fd751ae063cf8e6a904e79621a1db5b3d8604358741d9e"
+    },
+    {
+      "id": "SID_01",
+      "date": "2026-05-14",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_SID_01_en.pdf",
+      "sha256": "2bbcf60f7a1a40fd0ae5a2047f97fdf05f70bb20b25c3ff9960d0e641d5bc567"
+    },
+    {
+      "id": "SID_01_A",
+      "date": "2026-05-14",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_SID_01_A_en.pdf",
+      "sha256": "006bec89402eb60208bb34fe6a0606ac763c353f2b4a4b8c2a574044780776c2"
+    },
+    {
+      "id": "IAC_13",
+      "date": "2025-06-12",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_IAC_13_en.pdf",
+      "sha256": "95c30321f526cfeedaf48e986e4383272f4fddc41f86446292dcc9f2e6c78b5c"
+    },
+    {
+      "id": "IAC_15",
+      "date": "2025-06-12",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_IAC_15_en.pdf",
+      "sha256": "0493e66c9d0329ac0b97c09177732af55945ceab266d4d8b855b11dae35b57cc"
+    },
+    {
+      "id": "IAC_17",
+      "date": "2026-08-06",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_IAC_17_en.pdf",
+      "sha256": "210da8bc9471337d53f26458eac43be00c909e34de94ed1e5ba12b096414a729"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {resetPreview,resetExperiment,RESET_RECEIPT} from '../server/reset-experiment.mjs';
+import {createSimulation} from '../src/simulation.mjs';
+import {ReplayArchive} from '../server/replay-archive.mjs';
+test('exact dry-run reset clears experiment and replay once, preserves billing/visitors and rejects inventory drift',async()=>{
+ let data=new Map();
+ const adapter=map=>({get:async k=>structuredClone(map.get(k)),delete:async k=>map.delete(k),put:async(k,v)=>{for(const [name,value] of Object.entries(typeof k==='string'?{[k]:v}:k))map.set(name,structuredClone(value));}});
+ const storage={list:async({prefix})=>new Map([...data].filter(([k])=>k.startsWith(prefix))),get:async k=>structuredClone(data.get(k)),put:async(k,v)=>adapter(data).put(k,v),transaction:async fn=>{const staged=structuredClone(data);await fn(adapter(staged));data=staged;}};
+ const old={sim:createSimulation(),budget:{tokens:12345,actualTokens:12300},ai:{totalCalls:50},startedAt:1};old.sim.elapsed=190;old.sim.stats.collisions=4;
+ data.set('airport-ltfm-v1',old);data.set('total-visits',87);data.set('viewers-v3',[['viewer',{active:true}]]);
+ data.set('replay-archive-ltfm-v2',{pageCount:1,frameCount:32});data.set('replay-archive-ltfm-v2:0',[{at:190}]);
+ const preview=await resetPreview(storage);const before=structuredClone(data);
+ await assert.rejects(resetExperiment(storage,old,[]),/inventory changed/);assert.deepEqual(data,before);
+ data.set('replay-archive-ltfm-v2:99',[]);await assert.rejects(resetExperiment(storage,old,preview.keys),/inventory changed/);data.delete('replay-archive-ltfm-v2:99');
+ const broken={...storage,transaction:async fn=>{const staged=structuredClone(data);await fn(adapter(staged));throw new Error('commit failed');}};
+ await assert.rejects(resetExperiment(broken,old,preview.keys),/commit failed/);assert.deepEqual(data,before);
+ const fresh=await resetExperiment(storage,old,preview.keys);
+ assert.equal(fresh.sim.elapsed,0);assert.equal(fresh.sim.stats.collisions,0);assert.equal(fresh.ai.totalCalls,0);assert.deepEqual(fresh.budget,old.budget);
+ assert.equal(data.get('total-visits'),87);assert.deepEqual(data.get('viewers-v3'),before.get('viewers-v3'));assert.equal(data.has('replay-archive-ltfm-v2:0'),false);assert.ok(data.has(RESET_RECEIPT));
+ const replay=await ReplayArchive.open(storage,fresh.sim.flights.map(f=>f.id));assert.equal((await replay.read()).frames.length,0);
+ fresh.sim.elapsed=10;assert.equal((await resetExperiment(storage,fresh,[])).sim.elapsed,10);
+});
