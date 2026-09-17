@@ -28,3 +28,11 @@ test('CI has immutable action pins, read-only permissions, guarded tests and no 
  for(const line of text.split('\n').filter(l=>l.includes('uses:')))assert.match(line,/@[a-f0-9]{40}\s/);
  assert.doesNotMatch(text,/secrets\.|pull_request_target|npm run deploy|wrangler deploy(?!.*dry-run)/);
 });
+test('provenance canonicalizes text line endings across Windows and Linux checkouts',()=>{
+ const lf=path.join(root,'lf'),crlf=path.join(root,'crlf');
+ for(const dir of [lf,crlf])fs.mkdirSync(path.join(dir,'src'),{recursive:true});
+ fs.writeFileSync(path.join(lf,'src','same.mjs'),'export const value=1;\nexport const next=2;\n');
+ fs.writeFileSync(path.join(crlf,'src','same.mjs'),'export const value=1;\r\nexport const next=2;\r\n');
+ const a=sourceInventory(lf),b=sourceInventory(crlf);
+ assert.equal(a.schemaVersion,2);assert.deepEqual(a,b);
+});

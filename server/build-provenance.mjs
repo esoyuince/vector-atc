@@ -1,11 +1,11 @@
 // Generated from source bytes; no credentials or timestamps.
 export default {
-  "schemaVersion": 1,
-  "sourceFingerprint": "5673bdf443bf05144800a75dc8fa90c741f0827ebd2c4b670aa0cff9baac59e0",
+  "schemaVersion": 2,
+  "sourceFingerprint": "d17bc1d2db79371dcdc3a0e0783f630432e7b8f1e468542cf3e4418afcc4b6d1",
   "files": {
-    ".gitattributes": "d711b6ba64c7208f3059111e2a74a2453348584bef1fec237198ad08befe28b9",
+    ".gitattributes": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c",
     ".github/workflows/ci.yml": "086c4328a299b047d7ff5e0fffddd2d1dcff9090538a42a1d6f807ea6e0a2122",
-    ".gitignore": "1ee73d941d331044028b39fd74bd8f7db7311df6b589ae442d551c2420a4a4ed",
+    ".gitignore": "6be1067d889394031e3c2d70cbeefcc59526013ef398a64ff9340066e251d993",
     "README.md": "5c39c78689a1ba8196728dfcd78406f821caec1319a1d10c1eb6fcb675a1b844",
     "docs/data-sources.json": "6e9873ec17aeacc39c37bacc2f049c385c0df7cb13cd7b771add2cd83eb0886d",
     "docs/evaluation-spec.json": "1c0c34e8e14fbac6af0040a753a9c64911c81d439a3207a6ab27cb92eced64c6",
@@ -14,14 +14,14 @@ export default {
     "docs/run-manifest.example.json": "0dc9125ec14fdd8cdb2886a558cdf976c7d61bab238038818a29450964c35e4f",
     "docs/simulation-policy-v2.md": "2b43ae2032bc51a2bc8181b00f8eb420d08389646159f0be88e092670a020ff3",
     "index.html": "be0a5e6d78e4f339cd83ee0820f426cd15b512177011471257c7b24c04d699c9",
-    "package-lock.json": "cfa30a510308e331b4154b33459850968329d130584612903667f1ae4669dc40",
-    "package.json": "67aba3884aee00f1bd8ef174cdf8fc09a3f314ffc3fa718accca8af160d17382",
+    "package-lock.json": "1e1114e6c63ed0ffebee26e9ad991ac69f66077cdc191429fb0872e65549877b",
+    "package.json": "f2d967fc48138c28b7f0435006c27e384dd20342127ac1d6e7cf37a4a75902d6",
     "scripts/analyze-research.mjs": "b4a6020e2c6e747e29fd3e98b699b2fd2fa9bf9a325a1ea6722d82749b2e858e",
     "scripts/export-research.mjs": "c984587cb7b1f452b369970590d6fc3d9be32249637949d97bb1e449ee0a7441",
     "scripts/freeze-run.mjs": "bdc8d37d76a0593afde1c88bc038795e10078fb2c10fe298f18a0bc0e0b20f7b",
     "scripts/lib/offline-harness.mjs": "c4061d9c98056a56c55b90f1d2f64242cba6c810c1281f168bf9b86593f77268",
     "scripts/lib/research-analysis.mjs": "11b541f6b04a2fbaf48b15715cd110eaf933f31f29ac7e1d82de14751d48b694",
-    "scripts/lib/source-inventory.mjs": "085000925482ef8d0f3204806aa7dee54bf34d145303f2ae59aba10534444042",
+    "scripts/lib/source-inventory.mjs": "2ebb967978f0105ae023bd716f04a5c809535f7c10784b6ad638ed0134a6a99b",
     "scripts/lib/verified-export.mjs": "4831ac8e8fa3997a8261f683b53807e37fc590c8133d3fbc45868386577e5b52",
     "scripts/offline-guard.mjs": "65123502ea30be03fb7b44268012a2307fce84bae0545789182bc560039db8c1",
     "scripts/offline-soak.mjs": "ec08887dfcc836ef594b26067d4e02bf415e00a55d71a3f32104485a3d74d408",
@@ -33,7 +33,7 @@ export default {
     "server/reset-experiment.mjs": "4a2ea42de8bb5a751f98dfc8c9ac1afbb4bd530b4a0af45bad68608e949de1bb",
     "server/study-run.mjs": "7d431f29515282b1dd084186008695c71134e0d621f3de3143a6ceee3d453e92",
     "server/typesafe.mjs": "d2ccb80175f6ba139f8cdc8d5c3f2c0c6cb6414ff716ebe950efeb8da3372c23",
-    "server/worker.mjs": "3d5645a8569629aa7086c535f68aa316da0581b391dbb53119ac609d7cc07eeb",
+    "server/worker.mjs": "62119d13d103b012d8afc50441db91b1145cd2497241278d975635c9562e35e5",
     "src/App.jsx": "f6064b5e9d39f2650b3e4fd0e2cbd2f3d40a74757217870986b66582b36449ad",
     "src/DecisionPanel.jsx": "f04a8022379b41cbdfcc0e4b10e98958c450284334a0dcd99fcccfa10f4ffd08",
     "src/ProcedureInfo.jsx": "9a79d9611ba18be068ea48b0694bd7759d239cddd22fd6bdc90a7af8672ee9b6",
@@ -58,7 +58,7 @@ export default {
     "test/http-smoke.mjs": "54fa332f1b35606b54abb7bed2c56fb211fb5050270a171b1dfe629a0791bbf9",
     "test/i18n.test.mjs": "9e8e9e5abed87cc2de2313b236d75170a6864068966f0e3b0c0e3973074093c8",
     "test/integration-regressions.test.mjs": "d0f6386b5bb570d076e39213634e818ff33f7353dd31af49412e48dba4e38be7",
-    "test/offline-tooling.test.mjs": "bc3d860575217145dfc940457341addf701a64980517aed4b3581dd0cdebad88",
+    "test/offline-tooling.test.mjs": "d6acc50430d68c1e53137e873ac5cc24c02e53dd608e94fcdd1209f27e05f2d5",
     "test/pilot-command.test.mjs": "a8efed8fcb6afcad87933cef673b9fd5f9550f14107d6d5e0a69ffe66f4f9a98",
     "test/pilot.test.mjs": "856cd19fe4df2993372737e7459fb3ea818f0f7101fc05ed9c1a460e9efbb653",
     "test/procedure-command-log.test.mjs": "bf019b01fdbcb2afbc8dfb9d5230732d143707e23a864349f8c1483af6937b91",
@@ -73,6 +73,6 @@ export default {
     "test/terminal-order.test.mjs": "0877f7f8a85260171d6f26d5d41bbe7379d43e755eb99681aa48eb9b71ea8c27",
     "test/traffic-initialization.test.mjs": "2353a06f0d19be1ca236c94ddce1a3062880473fa1c5990e8dcda82b8641cb33",
     "test/worker.test.mjs": "ab848d9233c537c837bdb149f577aea3708f9150755b0c8935ba1cbb0417fd94",
-    "wrangler.example.jsonc": "cd0dc3dc9b829a42118968ddea2c1daf45b1ab3eba2b9de407e81aefa7df8107"
+    "wrangler.example.jsonc": "e3d0f96841114c1b883be1bd078cbe8cf59d8a67a0fdd9851e05f6582e83cc8f"
   }
 };
