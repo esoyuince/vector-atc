@@ -130,6 +130,7 @@ const english={
  "Çarpışma": "Collision",
  "Yer teması": "Ground impact",
  "İzinsiz final komutu": "Final command without clearance",
+ "Çelişkili pist izinleri": "Conflicting runway clearances",
  "Geliş uçağı sektör dışına çıktı": "Arrival left the sector",
  "AI yanıtı yok · deney duraklatıldı": "No AI response · experiment paused",
  " uçak · ": " aircraft · "

@@ -4,10 +4,15 @@ export function batchPlans(plan,size=10){
  const traffic=Object.values(plan.state.aircraft).map(f=>[f.id,f.phase,...f.positionNm,f.altitudeFt,f.speedKt,f.headingDeg,f.verticalRateFpm,f.waitSeconds,f.command?[f.command.route,f.command.altitudeFt,f.command.speedKt,f.command.verticalRateFpm]:null,f.procedure.nextLeg?.fix||null,f.pilot?.unable||[]]);
  const batches=[];
  for(let start=0;start<plan.flights.length;start+=size){
-  const flights=plan.flights.slice(start,start+size),ids=new Set(flights.map(f=>f.id));
+  const flights=plan.flights.slice(start,start+size),ids=new Set(flights.map(f=>f.id)),runwayBatch=start===0&&plan.runways.length>0;
+  const runwayIds=new Set(runwayBatch?plan.runways.map(r=>r.id):[]),contextIds=new Set(ids);
+  if(runwayBatch){
+   for(const r of plan.runways)for(const c of r.choices)contextIds.add(c.id);
+   for(const r of plan.state.runways)if(runwayIds.has(r.id))for(const id of [...(r.occupants||[]),...(r.reservations||[]),...(r.reserved?[r.reserved]:[])])contextIds.add(id);
+  }
   const needed=new Set(flights.flatMap(f=>Object.keys(f.routes)).filter(id=>PROCEDURES[id]));
   const procedures=Object.fromEntries([...needed].map(id=>{const p=PROCEDURES[id];return [id,{...p,legs:p.legs.map(l=>({...l,positionNm:FIXES[l.fix].point.map(n=>Math.round(n*100)/100)}))}];}));
-  batches.push({...plan,flights,runways:start===0?plan.runways:[],state:{...plan.state,procedures,holds:AIRPORT.holds,aircraft:Object.fromEntries(Object.entries(plan.state.aircraft).filter(([id])=>ids.has(id))),trafficColumns:['id','phase','xNM','yNM','altFt','speedKt','headingTrueDeg','verticalFpm','waitSec','command','nextLeg','pilot'],traffic,runwayCandidates:start===0?Object.fromEntries(plan.runways.flatMap(r=>r.choices).map(c=>{const f=plan.state.aircraft[c.id];return [c.id,{runway:f.runway,procedure:f.procedure,command:f.command}];})):undefined,conflicts:plan.state.conflicts.filter(c=>ids.has(c.a)||ids.has(c.b)),recentIncidents:[]}});
+  batches.push({...plan,flights,runways:runwayBatch?plan.runways:[],state:{...plan.state,procedures,holds:AIRPORT.holds,aircraft:Object.fromEntries(Object.entries(plan.state.aircraft).filter(([id])=>ids.has(id))),trafficColumns:['id','phase','xNM','yNM','altFt','speedKt','headingTrueDeg','verticalFpm','waitSec','command','nextLeg','pilot'],traffic,runwayCandidates:runwayBatch?Object.fromEntries(plan.runways.flatMap(r=>r.choices).map(c=>{const f=plan.state.aircraft[c.id];return [c.id,{runway:f.runway,procedure:f.procedure,command:f.command}];})):undefined,conflicts:plan.state.conflicts.filter(c=>contextIds.has(c.a)||contextIds.has(c.b)),recentIncidents:[]}});
  }
  if(size>1&&batches.some(p=>new TextEncoder().encode(JSON.stringify(buildRequest(p,'jev-1.13.0'))).length+4096>79000))return batchPlans(plan,Math.max(1,Math.floor(size/2)));
  return batches;

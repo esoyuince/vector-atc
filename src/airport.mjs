@@ -35,7 +35,8 @@ export function routeOptions(f){
  const choices={};
  if(f.mission==='arrival'){
   choices[f.arrival]=routeDescription(PROCEDURES[f.arrival]);
-  const hold=f.command?.navigation?.fix,entry=['GAZGE','INSTA','ULQAL'].includes(hold)?hold:'GAZGE';
+  const active=PROCEDURES[f.command?.route],hold=f.command?.navigation?.fix;
+  const entry=active?.kind==='APP'?active.legs[0]?.fix:['GAZGE','INSTA','ULQAL'].includes(hold)?hold:'GAZGE';
   for(const p of Object.values(PROCEDURES))if((p.kind==='APP'&&p.id.endsWith('_'+entry))||(p.kind==='MISSED'&&p.runway===RUNWAYS[f.lane].id))choices[p.id]=routeDescription(p);
  }else for(const p of Object.values(PROCEDURES))if(p.kind==='SID'&&p.runway===RUNWAYS[f.lane].id)choices[p.id]=routeDescription(p);
  if(f.phase!=='taxi_out'){

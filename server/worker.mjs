@@ -118,7 +118,8 @@ export class AirportSimulation extends DurableObject{
    addEvent(settled.sim,'TypeSafe filo komutları · '+applied.applied+' uçak · '+Object.keys(result.answers).length+' karar','typesafe');
   }else{settled.frameRemaining=0;settled.paused=true;settled.ai.mode='idle';await this.ctx.storage.deleteAlarm();}
   settled.sim.lastWall=Date.now();
-  settled.ai.last={trigger:plan.state.trigger,telemetry:plan.state.aircraft,at:Date.now(),model:result.model,latencyMs:result.latencyMs,usage:result.usage,aircraft:plan.flights.length,questions:Object.keys(result.answers).length,...applied,decisions:plan.flights.map(f=>({flight:f.id,route:result.answers[f.id+'_route'].choice,altitude:result.answers[f.id+'_altitude'].choice,speed:result.answers[f.id+'_speed'].choice,rate:result.answers[f.id+'_rate'].choice,confidence:result.answers[f.id+'_route'].confidence}))};
+  const evidence={version:1,planRevision:plan.revision,runwayOrder:plan.runways.map(r=>r.id),runwayConflictResolution:'last-in-plan-order',answers:result.answers};
+  settled.ai.last={trigger:plan.state.trigger,telemetry:plan.state.aircraft,at:Date.now(),model:result.model,latencyMs:result.latencyMs,usage:result.usage,aircraft:plan.flights.length,questions:Object.keys(result.answers).length,...applied,evidence,decisions:plan.flights.map(f=>({flight:f.id,route:result.answers[f.id+'_route'].choice,altitude:result.answers[f.id+'_altitude'].choice,speed:result.answers[f.id+'_speed'].choice,rate:result.answers[f.id+'_rate'].choice,confidence:result.answers[f.id+'_route'].confidence}))};
   await this.persist(settled);
  }
 }

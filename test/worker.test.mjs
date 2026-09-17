@@ -151,3 +151,40 @@ test('budget replay stays bounded, survives reload and reads never call AI or ad
  assert.equal(h.calls.length,calls);assert.equal(JSON.stringify(await c.report()),before);
  assert.deepEqual(h.stored.get('replay-archive-ltfm-v2:0'),replay.frames);
 });
+
+
+test('latest decision evidence retains all normalized judgments and runway order across reload',async t=>{
+ const h=await harness(t),c=h.controller;
+ t.mock.method(globalThis,'fetch',async(_url,opts)=>{
+  const request=JSON.parse(opts.body);h.calls.push(request);const data=response(request);
+  data.extra='private-fixture-value';
+  for(const answer of Object.values(data.answers))answer.extra='private-fixture-value';
+  return Response.json(data);
+ });
+ await c.heartbeat('viewer',1,true);await c.alarm();
+ const evidence=c.record.ai.last.evidence;
+ assert.ok(evidence);assert.equal(evidence.version,1);assert.equal(evidence.planRevision,0);
+ assert.equal(Object.keys(evidence.answers).length,403);
+ assert.deepEqual(evidence.runwayOrder,['16R','17L','18']);
+ assert.equal(evidence.runwayConflictResolution,'last-in-plan-order');
+ for(const request of h.calls)assert.deepEqual(Object.fromEntries(Object.keys(request.questions).map(id=>[id,evidence.answers[id]])),response(request).answers);
+ const report=await c.report();assert.equal(JSON.stringify(report).includes('private-fixture-value'),false);
+ assert.deepEqual(report.ai.last.evidence,evidence);
+ assert.ok(Buffer.byteLength(JSON.stringify(c.record))<1000000,'latest-only evidence must fit the storage value');
+ const reloaded=await harness(t,h.stored);assert.deepEqual(reloaded.controller.record.ai.last.evidence,evidence);
+ assert.equal(reloaded.calls.length,0);
+});
+test('emergency evidence replaces prior runway judgments rather than reusing stale decisions',async t=>{
+ const h=await harness(t),c=h.controller;await c.heartbeat('viewer',1,true);await c.alarm();
+ const [a,b]=c.record.sim.flights.slice(50,52);
+ for(const f of c.record.sim.flights)f.phase='taxi_out';
+ for(const [i,f] of [a,b].entries()){
+  Object.assign(f,{phase:'arrival',altitude:6000,speed:220,verticalRate:0,x:i?1:-1,y:20,heading:i?270:90});
+  f.command={route:i?'VECTOR_W':'VECTOR_E',altitude:6000,speed:220,rate:1000,navigation:{kind:'VECTOR',points:[[i?-30:30,20]],index:0}};
+ }
+ h.advance(2000);await c.alarm();
+ assert.equal(c.record.ai.last.trigger.reason,'predicted-conflict');
+ assert.deepEqual(c.record.ai.last.evidence.runwayOrder,[]);
+ assert.equal(Object.keys(c.record.ai.last.evidence.answers).length,8);
+ assert.ok(Object.keys(c.record.ai.last.evidence.answers).every(id=>id.startsWith(a.id+'_')||id.startsWith(b.id+'_')));
+});

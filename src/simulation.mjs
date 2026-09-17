@@ -40,7 +40,7 @@ export function createSimulation(now=Date.now(),seed=123456789){
  const sim={version:4,dataset:DATASET_INFO.id,revision:0,seed:seed>>>0,initialSeed:seed>>>0,elapsed:0,lastWall:now,flights:[],runways:RUNWAYS.map(r=>({...r,reserved:null,occupants:[],completed:0})),
  stats:{takeoffs:0,landings:0,departures:0,cycles:0,respawns:0,aiApplied:0,rejected:0,collisions:0,groundImpacts:0,separationEpisodes:0,criticalEpisodes:0,runwayIncursions:0,sectorViolations:0,aircraftHours:0,completedWaitSeconds:0,clearances:0},
  events:[],alerts:[],incidents:[],openSeparation:[],openCritical:[],openRunway:[]};
- Object.assign(sim.stats,{procedureViolations:0,altitudeViolations:0,speedViolations:0,routeViolations:0,clearanceMismatches:0});
+ Object.assign(sim.stats,{procedureViolations:0,altitudeViolations:0,speedViolations:0,routeViolations:0,clearanceMismatches:0,runwayAssignmentConflicts:0});
  for(let i=0;i<100;i++){const f={id:['TRK','PGS','AJT','SXS'][i%4]+(101+i),type:['B738','A320','A21N','B789'][i%4],mission:i<50?'departure':'arrival',cycles:0,generation:0};spawn(sim,f,true);sim.flights.push(f);}
  return sim;
 }
@@ -88,8 +88,16 @@ export function recordIncident(sim,type,ids,detail={}){
 }
 export function applyFleetDecision(sim,plan,answers){
  if(plan.revision!==sim.revision){sim.stats.rejected+=plan.flights.length;return {applied:0,rejected:plan.flights.length};}
- const clearances=new Map();
- for(const r of plan.runways){const id=answers['runway_'+r.id]?.choice,c=r.choices.find(c=>c.id===id);if(c)clearances.set(id,{...c,runway:r.id});}
+ const clearances=new Map(),assignments=new Map();
+ for(const r of plan.runways){
+  const id=answers['runway_'+r.id]?.choice,c=r.choices.find(c=>c.id===id);if(!c)continue;
+  const list=assignments.get(id)||[];list.push({...c,runway:r.id});assignments.set(id,list);clearances.set(id,list.at(-1));
+ }
+ for(const [id,list] of assignments)if(list.length>1){
+  const requestedRunways=list.map(c=>c.runway),executionRunway=requestedRunways.at(-1);
+  sim.stats.runwayAssignmentConflicts=(sim.stats.runwayAssignmentConflicts||0)+1;
+  recordIncident(sim,'Çelişkili pist izinleri',[id],{code:'multiple-runway-assignment',requestedRunways,executionRunway,resolution:'last-in-plan-order',planRevision:plan.revision});
+ }
  let applied=0,rejected=0;
  for(const p of plan.flights){
   const f=sim.flights.find(f=>f.id===p.id),route=answers[f.id+'_route']?.choice,altitude=Number(answers[f.id+'_altitude']?.choice),speed=Number(answers[f.id+'_speed']?.choice),rate=Number(answers[f.id+'_rate']?.choice);
