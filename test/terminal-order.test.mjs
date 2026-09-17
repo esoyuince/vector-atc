@@ -36,3 +36,9 @@ test('different-time horizontal and vertical minima do not invent a simultaneous
  const {encounter}=await import('../src/flight-events.mjs');const a0={x:-1,y:0,altitude:0},a1={x:1,y:0,altitude:2000},b0={x:0,y:0,altitude:100},b1={...b0};assert.equal(encounter(a0,a1,b0,b1,.12,150),null);
  assert.equal(encounter({x:-1,y:.12,altitude:0},{x:1,y:.12,altitude:0},{x:0,y:0,altitude:0},{x:0,y:0,altitude:0},.12,150),null);
 });
+test('departure handoff waits for a forecast conflict, then completes without inventing a maneuver',()=>{
+ const s=fixture(),[a,b]=s.flights;Object.assign(a,{phase:'departure',x:31,y:0,altitude:10000,speed:250,heading:90,procedureDone:true});command(a,'VECTOR_E',10000,250);
+ Object.assign(b,{phase:'arrival',x:33,y:0,altitude:10000,speed:250,heading:270});command(b,'VECTOR_W',10000,250);const generation=a.generation;
+ advanceSimulation(s,1);assert.equal(a.generation,generation);assert.equal(a.phase,'departure');assert.equal(a.exitPending,true);assert.equal(s.stats.departures,0);
+ b.x=70;b.y=70;b.heading=0;b.command.navigation=navigation({...b,command:null},'VECTOR_N',250);advanceSimulation(s,1);assert.ok(a.generation>generation);assert.equal(s.stats.departures,1);assert.equal(a.cycles,1);
+});

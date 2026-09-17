@@ -81,16 +81,17 @@ export class AirportSimulation extends DurableObject{
  }
  async snapshot(){
   const {sim,ai,budget}=this.record,viewers=this.viewers();
-  return {experimentId:this.record.startedAt,...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:1,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:Boolean(viewers&&ai.mode==='active'&&this.record.frameRemaining>0),ai:{...ai,mode:viewers||['archive-error','input-too-large','study-stopped'].includes(ai.mode)?ai.mode:'idle',configured:Boolean(this.env.TYPESAFE_API_KEY),intervalSeconds:this.limits().intervalMs/1000,budget:{...budgetAt(budget,Date.now()),limit:this.limits().dailyTokens}}};
+  return {experimentId:this.record.startedAt,...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:1,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:Boolean(viewers&&ai.mode==='active'&&this.record.frameRemaining>0),ai:{...ai,mode:viewers||['archive-error','input-too-large','study-stopped'].includes(ai.mode)?ai.mode:'idle',configured:Boolean(this.env.TYPESAFE_API_KEY)&&this.env.AI_ENABLED!=='false',intervalSeconds:this.limits().intervalMs/1000,budget:{...budgetAt(budget,Date.now()),limit:this.limits().dailyTokens}}};
  }
  async replayData(page=0){return this.replay.read(page);}
  async captureReplay(sim){await this.replay.capture(sim);}
  async report(){
   const journal=await this.journal.read(),result={researchJournal:journal,study:this.record.study??null,sourceProvenance:provenance,reset:await this.ctx.storage.get(RESET_RECEIPT),startedAt:this.record.startedAt,...experimentReport(this.record.sim,this.record.ai,this.record.budget)};
   const covers=Number.isFinite(result.evaluation.coverage.startedAtSimSeconds)&&!journal.tailUncertain&&this.record.ai.mode!=='archive-error'&&journal.coverageStartSimSeconds<=result.evaluation.coverage.startedAtSimSeconds;
+  const reviewHash=this.record.study?.manifest.ruleReviewSha256,reviewed=Boolean(this.record.study?.manifest.independentRuleReview&&typeof reviewHash==='string'&&/^[a-f0-9]{64}$/.test(reviewHash));
   result.evaluation.dataAvailability.fullDecisionJournal=covers;result.evaluation.dataAvailability.fullIncidentJournal=covers;
-  result.evaluation.dataAvailability.locallyFrozenRunManifest=Boolean(this.record.study);result.evaluation.dataAvailability.journalScope='Since archive start; normalized replies, failure status, complete applied commands and events. Raw malformed provider bodies are not retained.';
-  result.evaluation.analysisReadiness.blockers=result.evaluation.analysisReadiness.blockers.filter(b=>!(covers&&['full-request-response-journal-missing','full-incident-journal-missing'].includes(b))&&!(this.record.study&&b==='frozen-run-manifest-missing'));
+  result.evaluation.dataAvailability.locallyFrozenRunManifest=Boolean(this.record.study);result.evaluation.dataAvailability.independentlyAdjudicatedLabels=reviewed;result.evaluation.dataAvailability.ruleReviewSha256=reviewed?reviewHash:null;result.evaluation.dataAvailability.journalScope='Since archive start; normalized replies, failure status, complete applied commands and events. Raw malformed provider bodies are not retained.';
+  result.evaluation.analysisReadiness.blockers=result.evaluation.analysisReadiness.blockers.filter(b=>!(covers&&['full-request-response-journal-missing','full-incident-journal-missing'].includes(b))&&!(this.record.study&&b==='frozen-run-manifest-missing')&&!(reviewed&&b==='independent-rule-adjudication-pending'));
   return result;
  }
  async persist(next,events=[]){
@@ -275,7 +276,7 @@ export default{
    }else if(url.pathname==='/api/report'){
     const {success}=await env.STATE_READ_LIMITER.limit({key:'vector-atc-report'});
     response=success?Response.json(await env.AIRPORT.getByName(objectName(env)).report(),{headers:{'Cache-Control':'no-store','Content-Disposition':'attachment; filename="vector-atc-report.json"'}}):new Response('Too many requests',{status:429});
-   }else if(url.pathname==='/api/health')response=Response.json({ok:true,version:'0.6.2'},{headers:{'Cache-Control':'no-store'}});
+   }else if(url.pathname==='/api/health')response=Response.json({ok:true,version:'0.6.3'},{headers:{'Cache-Control':'no-store'}});
    else if(url.pathname==='/'||/^\/assets\/[a-zA-Z0-9._-]+\.(js|css|woff2?)$/.test(url.pathname))response=await env.ASSETS.fetch(request);
    else response=new Response('Not found',{status:404});
   }catch{response=Response.json({error:'Sektör geçici olarak kullanılamıyor.'},{status:503});}

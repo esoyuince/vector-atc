@@ -131,6 +131,8 @@ Before the evaluated run, independently review detectors and the declared surfac
 
 The paper should contain system/task definition; execution contract; data provenance/scope; prompts/options; software/detector validation; observation/stop protocol; separate command/outcome/resource results; missing/censored data; failure cases; and validity threats. Publish shareable frozen artifacts, never credentials, visitor IDs or private deployment configuration.
 
+Independent rule adjudication is an external evidence artifact, not a software-test result. The unreviewed template is `docs/rule-review-template.json`. After review, the exact review-file SHA-256 is attached to a new frozen manifest; runtime reporting exposes adjudicated-label status only when that manifest linkage exists. Hash linkage proves which review file was declared, not the reviewer's identity, expertise or correctness.
+
 ## References
 
 [1] TypeSafe, Confidence. Accessed 2026-09-17. https://docs.typesafe.ai/confidence

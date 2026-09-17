@@ -14,7 +14,8 @@ export function parseStudyManifest(text){
  if(m.sourceFingerprint!==provenance.sourceFingerprint||(!m.versions||Object.keys(m.versions).length!==Object.keys(runtimeVersions()).length||Object.entries(runtimeVersions()).some(([k,v])=>m.versions[k]!==v)))throw Error('Frozen source or versions mismatch');
  if(!/^[a-f0-9]{64}$/.test(m.initialStateSha256)||typeof m.requestedModel!=='string'||m.requestedModel.length>80)throw Error('Invalid frozen provenance');
  for(const k of ['targetSimulatedSeconds','maxWallSeconds','maxTotalInputTokens'])if(!Number.isSafeInteger(m.stopping?.[k])||m.stopping[k]<=0)throw Error('Invalid stop rule '+k);
- if(m.stopping.stopForFavorableResults!==false)throw Error('Outcome-dependent stop forbidden');return m;
+ if(m.stopping.stopForFavorableResults!==false)throw Error('Outcome-dependent stop forbidden');
+ const review=m.independentRuleReview??false,reviewHash=m.ruleReviewSha256??null;if(typeof review!=='boolean'||(review?!(typeof reviewHash==='string'&&/^[a-f0-9]{64}$/.test(reviewHash)):reviewHash!==null))throw Error('Invalid independent rule review provenance');return m;
 }
 export async function initializeStudy(record,manifest,now){
  if(!manifest)return;

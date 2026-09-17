@@ -11,3 +11,9 @@ test('stopping is exposure/wall/budget based, never outcome dependent',async()=>
  const {record,m}=await fixture();await initializeStudy(record,m,1000);record.sim.stats.collisions=99;assert.equal(studyStopReason(record,1001),null);
  assert.equal(studyStopReason(record,61000),'wall-time');assert.equal(studyStopReason(record,2000,10001),'input-budget');record.sim.elapsed=30;assert.equal(studyStopReason(record,2000),'target-exposure');stopStudy(record,'target-exposure');assert.equal(record.study.status,'completed');assert.equal(record.frameRemaining,0);
 });
+test('independent review claims require a linked immutable artifact hash',async()=>{
+ const {m}=await fixture();assert.doesNotThrow(()=>parseStudyManifest({...m,independentRuleReview:false,ruleReviewSha256:null}));
+ assert.throws(()=>parseStudyManifest({...m,independentRuleReview:true,ruleReviewSha256:null}),/rule review provenance/);
+ assert.throws(()=>parseStudyManifest({...m,independentRuleReview:false,ruleReviewSha256:'a'.repeat(64)}),/rule review provenance/);
+ assert.doesNotThrow(()=>parseStudyManifest({...m,independentRuleReview:true,ruleReviewSha256:'a'.repeat(64)}));
+});

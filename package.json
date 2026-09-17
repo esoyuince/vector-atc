@@ -1,7 +1,7 @@
 {
   "name": "vector-typesafe-atc-demo",
   "private": true,
-  "version": "0.6.2",
+  "version": "0.6.3",
   "type": "module",
   "scripts": {
     "dev": "npm run build && wrangler dev --ip 127.0.0.1 --port 5173",
@@ -14,7 +14,11 @@
     "verify:provenance": "node scripts/verify-provenance.mjs",
     "analyze:research": "node scripts/analyze-research.mjs",
     "soak:offline": "node --expose-gc --import ./scripts/offline-guard.mjs scripts/offline-soak.mjs",
-    "check:worker:offline": "node --import ./scripts/offline-guard.mjs node_modules/wrangler/bin/wrangler.js deploy --dry-run --config wrangler.example.jsonc"
+    "check:worker:offline": "node --import ./scripts/offline-guard.mjs node_modules/wrangler/bin/wrangler.js deploy --dry-run --config wrangler.example.jsonc",
+    "test:coverage:offline": "node --import ./scripts/offline-guard.mjs --experimental-test-coverage --test-coverage-lines=95 --test-coverage-branches=85 --test-coverage-functions=90 --test test/*.test.mjs",
+    "sweep:offline": "node --import ./scripts/offline-guard.mjs scripts/offline-sweep.mjs",
+    "preflight:study": "node --import ./scripts/offline-guard.mjs scripts/study-preflight.mjs",
+    "attach:rule-review": "node --import ./scripts/offline-guard.mjs scripts/attach-rule-review.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

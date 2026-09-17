@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "status": "unreviewed",
+  "dataset": "LTFM-SOUTH-v1",
+  "evaluationProtocol": "vector-observational-v2",
+  "reviewer": {"name": null, "affiliation": null, "role": null, "reviewedAt": null},
+  "sourceFiles": ["docs/data-sources.json", "docs/evaluation-spec.json", "docs/simulation-policy-v2.md"],
+  "rules": [
+    {"id":"holding-minimum-altitude","decision":null,"evidence":[],"notes":null},
+    {"id":"holding-speed-limit","decision":null,"evidence":[],"notes":null},
+    {"id":"published-altitude-floor","decision":null,"evidence":[],"notes":null},
+    {"id":"published-altitude-ceiling","decision":null,"evidence":[],"notes":null},
+    {"id":"published-speed-constraint","decision":null,"evidence":[],"notes":null},
+    {"id":"fap-altitude-floor","decision":null,"evidence":[],"notes":null},
+    {"id":"approach-clearance-mismatch","decision":null,"evidence":[],"notes":null},
+    {"id":"low-altitude-speed-limit","decision":null,"evidence":[],"notes":null},
+    {"id":"sid-climb-gradient","decision":null,"evidence":[],"notes":null}
+  ],
+  "simulationAssumptions": [
+    {"id":"surface-model","decision":null,"evidence":[],"notes":null},
+    {"id":"touchdown-criteria","decision":null,"evidence":[],"notes":null},
+    {"id":"departure-handoff","decision":null,"evidence":[],"notes":null},
+    {"id":"arrival-injection","decision":null,"evidence":[],"notes":null},
+    {"id":"departure-injection","decision":null,"evidence":[],"notes":null},
+    {"id":"holding-entry-and-timing","decision":null,"evidence":[],"notes":null},
+    {"id":"separation-thresholds","decision":null,"evidence":[],"notes":null},
+    {"id":"generic-aircraft-performance","decision":null,"evidence":[],"notes":null}
+  ],
+  "allowedDecisions": ["accepted", "accepted-with-limitation", "rejected"],
+  "completionNote": "A completed file records an external/domain review. Software tests must never set this status automatically."
+}

@@ -35,6 +35,9 @@ jobs:
       - run: npm ci
       - run: npm run verify:provenance
       - run: npm run test:offline
+      - run: npm run test:coverage:offline
+        if: matrix.os == 'ubuntu-latest'
+      - run: npm run sweep:offline -- 500
       - run: npm run build
       - run: npm run verify:provenance
       - run: git diff --exit-code -- server/build-provenance.mjs

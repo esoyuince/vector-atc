@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {sourceInventory,verifyInventory} from '../scripts/lib/source-inventory.mjs';
 import {runtimeVersions} from '../server/study-run.mjs';
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'vector-tooling-test-'));
@@ -24,7 +25,7 @@ test('offline guard blocks external fetch and TCP before network dispatch',()=>{
 });
 test('CI has immutable action pins, read-only permissions, guarded tests and no deploy or secrets',()=>{
  const text=fs.readFileSync(new URL('../.github/workflows/ci.yml',import.meta.url),'utf8');
- assert.match(text,/contents: read/);assert.match(text,/persist-credentials: false/);assert.match(text,/test:offline/);assert.match(text,/windows-latest/);assert.match(text,/ubuntu-latest/);
+ assert.match(text,/contents: read/);assert.match(text,/persist-credentials: false/);assert.match(text,/test:offline/);assert.match(text,/test:coverage:offline/);assert.match(text,/sweep:offline/);assert.match(text,/windows-latest/);assert.match(text,/ubuntu-latest/);
  for(const line of text.split('\n').filter(l=>l.includes('uses:')))assert.match(line,/@[a-f0-9]{40}\s/);
  assert.doesNotMatch(text,/secrets\.|pull_request_target|npm run deploy|wrangler deploy(?!.*dry-run)/);
 });
@@ -35,4 +36,8 @@ test('provenance canonicalizes text line endings across Windows and Linux checko
  fs.writeFileSync(path.join(crlf,'src','same.mjs'),'export const value=1;\r\nexport const next=2;\r\n');
  const a=sourceInventory(lf),b=sourceInventory(crlf);
  assert.equal(a.schemaVersion,2);assert.deepEqual(a,b);
+});
+test('study preflight fails closed until frozen manifest and independent review are supplied',()=>{
+ const result=spawnSync(process.execPath,['--import','./scripts/offline-guard.mjs','scripts/study-preflight.mjs'],{cwd:fileURLToPath(new URL('..',import.meta.url)),encoding:'utf8',timeout:10000});
+ assert.equal(result.status,2,result.stderr);const report=JSON.parse(result.stdout);assert.ok(report.blockers.includes('frozen-run-manifest'));assert.ok(report.blockers.includes('independent-rule-review'));assert.deepEqual(report.externalPending,['real-provider-acceptance','production-acceptance']);
 });

@@ -23,5 +23,6 @@
   },
   "preregistered": false,
   "independentRuleReview": false,
+  "ruleReviewSha256": null,
   "note": "Generate locally after validation with scripts/freeze-run.mjs. Not an authorized study or deployment."
 }

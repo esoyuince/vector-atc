@@ -77,6 +77,7 @@ The no-repair policy is an intentional synthetic experiment, not real pilot oper
 Schema-valid out-of-procedure commands are applied unchanged and logged separately from measured violations. Published-data conflicts, simulator assumptions and integration conflicts have separate counters; physical limits are another category. The report evaluation section provides numerator/denominator pairs, phase and air/ground strata, an observation-start baseline and missing-data flags. Zero denominators produce null, not a safety claim. Latest evidence includes request hashes, prompt/context/protocol versions and per-batch usage/model identities; evaluation logs are not sent back to Jev.
 
 Default ground-control questions are removed. UI logs remain bounded; complete new observations are available in the separate research journal. Local manifest freezing and runtime stops are implemented. Independent rule adjudication and real-provider acceptance remain pending. Historical evidence is not backfilled or relabeled.
+Offline engineering acceptance also includes guarded coverage thresholds, deterministic seed sweeps, source/hash consistency checks and adversarial numeric-invariant tests. `docs/rule-review-template.json` is deliberately unapproved; after an external review, `attach:rule-review` links its exact SHA-256 into a new frozen manifest and `preflight:study` verifies that link. Software tests never create independent-review status.
 
 ## Reports, budget and replay
 

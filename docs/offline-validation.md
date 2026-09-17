@@ -56,3 +56,15 @@ The closure tests cover viewer departure before dispatch, concurrent/duplicate h
 Independent aviation/source-rule adjudication, operator approval of surface/exit/scenario assumptions, production deployment acceptance, real-provider acceptance, study approval/preregistration and actual paper data collection are not accomplished by these scripts. A live acceptance would require its own explicit credit authorization; no paid A/B experiment is necessary.
 
 Official engineering references consulted for this implementation: Cloudflare Durable Object alarms (at-least-once delivery and retry), SQLite-backed storage (atomic multi-key operations), and the official GitHub actions/checkout, actions/setup-node and actions/upload-artifact repositories. Tests of the local adapter do not replace acceptance on Cloudflare infrastructure.
+
+## Additional deterministic checks
+
+`npm run test:coverage:offline` enforces minimum aggregate coverage of 95% lines, 85% branches and 90% functions under the external-network guard. Coverage is an engineering regression signal, not domain validation.
+
+`npm run sweep:offline -- N` constructs N seeded airborne scenarios without inference. It checks finite numeric state, sector admission, unresolved initial separation, pending-aircraft exclusion, deterministic replay samples and request-envelope size. A 10,000-seed development sweep completed with zero detected initialization failures; this is software evidence, not model-performance evidence.
+
+Frozen data provenance is cross-checked between `src/ltfm-data.json` and `docs/data-sources.json`. This proves internal source/hash references are consistent; it does not independently re-download or adjudicate the referenced AIP documents.
+
+`docs/rule-review-template.json` is intentionally unapproved. A domain reviewer must supply evidence and decisions; software tests cannot set independent-review status. `npm run preflight:study -- MANIFEST REVIEW` fails closed when the frozen manifest or completed review is absent and still lists real-provider and production acceptance as external pending work.
+
+A completed external review should be saved outside the repository and passed to `npm run attach:rule-review -- FROZEN_MANIFEST REVIEW_JSON NEW_MANIFEST`. The tool validates every detector/assumption decision and stores the exact review-file SHA-256 in a new manifest without overwriting the original. Runtime reporting can only mark labels independently adjudicated when that manifest flag and hash are present. This links provenance; it does not verify the reviewer's real-world identity or expertise.

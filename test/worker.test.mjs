@@ -414,3 +414,12 @@ test('restart after a persisted intent with unknown outcome cannot send it again
  await again.controller.heartbeat('unknown-outcome-viewer',1,true);await again.controller.alarm();assert.equal(again.calls.length,0);
  assert.ok((await journalEntries(again.controller)).flatMap(e=>e.events).some(e=>e.kind==='interrupted-dispatch'));
 });
+test('report links independent adjudication only to a frozen manifest review hash',async t=>{
+ const {createAirborneSimulation}=await import('../src/simulation.mjs'),{initialStateFingerprint,runtimeVersions,provenance}=await import('../server/study-run.mjs'),hash='a'.repeat(64);
+ const m={status:'frozen-local',runId:'review-linked',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds:60,maxWallSeconds:600,maxTotalInputTokens:1000000,stopForFavorableResults:false},independentRuleReview:true,ruleReviewSha256:hash};
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(m),RESEARCH_RUN_ID:m.runId}),report=await h.controller.report();
+ assert.equal(report.evaluation.dataAvailability.independentlyAdjudicatedLabels,true);assert.equal(report.evaluation.dataAvailability.ruleReviewSha256,hash);assert.ok(!report.evaluation.analysisReadiness.blockers.includes('independent-rule-adjudication-pending'));
+});
+test('AI-disabled snapshot is not advertised as connected even if a local key exists',async t=>{
+ const h=await harness(t,new Map(),{AI_ENABLED:'false'}),snapshot=await h.controller.snapshot();assert.equal(snapshot.ai.configured,false);assert.equal(h.calls.length,0);
+});
