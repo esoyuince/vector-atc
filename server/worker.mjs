@@ -81,7 +81,7 @@ export class AirportSimulation extends DurableObject{
  }
  async snapshot(){
   const {sim,ai,budget}=this.record,viewers=this.viewers();
-  return {experimentId:this.record.startedAt,...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:1,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:Boolean(viewers&&ai.mode==='active'&&this.record.frameRemaining>0),ai:{...ai,mode:viewers?ai.mode:'idle',configured:Boolean(this.env.TYPESAFE_API_KEY),intervalSeconds:this.limits().intervalMs/1000,budget:{...budgetAt(budget,Date.now()),limit:this.limits().dailyTokens}}};
+  return {experimentId:this.record.startedAt,...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:1,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:Boolean(viewers&&ai.mode==='active'&&this.record.frameRemaining>0),ai:{...ai,mode:viewers||['archive-error','input-too-large','study-stopped'].includes(ai.mode)?ai.mode:'idle',configured:Boolean(this.env.TYPESAFE_API_KEY),intervalSeconds:this.limits().intervalMs/1000,budget:{...budgetAt(budget,Date.now()),limit:this.limits().dailyTokens}}};
  }
  async replayData(page=0){return this.replay.read(page);}
  async captureReplay(sim){await this.replay.capture(sim);}
@@ -102,12 +102,15 @@ export class AirportSimulation extends DurableObject{
  }
  async researchData(entry=null,chunk=null){return this.journal.read(entry,chunk);}
  async alarm(){
+  // Coalesce re-entry before any storage await; a leave can still abort the active dispatch.
+  if(this.alarmBusy){if(!this.viewers())this.inFlight?.abort();return;}
+  this.alarmBusy=true;
   try{return await this.runAlarm();}
   catch(error){
    if(!(error instanceof ArchiveError))throw error;
    const stopped=structuredClone(this.record);stopped.ai.mode='archive-error';stopped.ai.stopReason=error.code;stopped.frameRemaining=0;if(stopped.study){stopped.study.status='incomplete';stopped.study.stopReason=error.code;}
    await this.ctx.storage.put('airport-ltfm-v1',stopped);this.record=stopped;await this.ctx.storage.deleteAlarm();
-  }
+  }finally{this.alarmBusy=false;}
  }
  async runAlarm(){
   const now=Date.now(),next=structuredClone(this.record),limits=this.limits(),journalEvents=[];
@@ -163,6 +166,7 @@ export class AirportSimulation extends DurableObject{
   }
   const reservations=requests.map(request=>new TextEncoder().encode(JSON.stringify(request)).length+4096);
   const totalReserve=reservations.reduce((a,b)=>a+b,0),stopBudget=studyStopReason(next,now,totalReserve);if(stopBudget){stopStudy(next,stopBudget);journalEvents.push({kind:'study-stop',reason:stopBudget});await this.persist(next,journalEvents);await this.ctx.storage.deleteAlarm();return;}
+  const budgetBeforeDispatch=structuredClone(next.budget);
   let reservation=next.budget;
   for(const reserved of reservations){reservation=reserved<=80000?reserveBudget(reservation,now,reserved,limits):null;if(!reservation)break;}
   if(!reservation){
@@ -176,11 +180,19 @@ export class AirportSimulation extends DurableObject{
   journalEvents.push({kind:'dispatch-intent',plan:{revision:plan.revision,flights:plan.flights,runways:plan.runways},planRevision:plan.revision,trigger:plan.state.trigger,requests:requests.map(r=>JSON.stringify(r)),reservations});
   if(next.study)next.study.accountedInputTokens+=totalReserve;
   next.budget=reservation;next.ai.totalCalls+=requests.length;next.ai.mode='evaluating';if(!emergency)next.ai.nextAt=now+limits.intervalMs;await this.persist(next,journalEvents);
+  if(!this.viewers()){
+   const cancelled=structuredClone(this.record);
+   cancelled.budget=budgetAt(budgetBeforeDispatch,Date.now());cancelled.ai.totalCalls-=requests.length;
+   if(cancelled.study)cancelled.study.accountedInputTokens-=totalReserve;
+   cancelled.ai.mode='idle';cancelled.ai.nextAt=0;cancelled.paused=true;cancelled.frameRemaining=0;
+   await this.persist(cancelled,[{kind:'dispatch-cancelled',planRevision:plan.revision,reason:'no-viewers-before-send',requestsSent:0,reservationReleased:totalReserve}]);
+   await this.ctx.storage.deleteAlarm();return;
+  }
   this.inFlight=new AbortController();
   const batchStart=Date.now();
   const outcomes=await Promise.allSettled(requests.map(request=>callTypeSafe(request,this.env.TYPESAFE_API_KEY,{signal:this.inFlight.signal})));
   this.inFlight=null;
-  const settled=structuredClone(this.record);const outcomeEvents=[{kind:'dispatch-outcomes',planRevision:plan.revision,outcomes:outcomes.map(o=>o.status==='fulfilled'?{status:o.status,result:o.value}:{status:o.status,errorCode:o.reason?.code??'provider-or-contract-failure'})}];
+  const settled=structuredClone(this.record);const outcomeEvents=[{kind:'dispatch-outcomes',planRevision:plan.revision,outcomes:outcomes.map(o=>o.status==='fulfilled'?{status:o.status,result:o.value}:{status:o.status,errorCode:o.reason?.code??'provider-or-contract-failure',httpStatus:o.reason?.status??null})}];
   outcomes.forEach((o,i)=>{if(o.status==='fulfilled')settled.budget=settleBudget(settled.budget,reservation,reservations[i],o.value.usage.input_tokens,Date.now());});
   if(settled.study)outcomes.forEach((o,i)=>{if(o.status==='fulfilled')settled.study.accountedInputTokens+=o.value.usage.input_tokens-reservations[i];});
   const stopAfterResponse=studyStopReason(settled,Date.now());if(stopAfterResponse){stopStudy(settled,stopAfterResponse);outcomeEvents.push({kind:'study-stop',reason:stopAfterResponse,application:'not-applied'});await this.persist(settled,outcomeEvents);return;}
@@ -192,6 +204,11 @@ export class AirportSimulation extends DurableObject{
    await this.persist(failed,outcomeEvents);return;
   }
   const results=outcomes.map(o=>o.value);
+  if(settled.study&&results.some(r=>r.model!==settled.study.manifest.requestedModel)){
+   stopStudy(settled,'returned-model-mismatch');
+   outcomeEvents.push({kind:'study-stop',reason:'returned-model-mismatch',application:'not-applied'});
+   await this.persist(settled,outcomeEvents);await this.ctx.storage.deleteAlarm();return;
+  }
   const result={model:results[0].model,answers:Object.assign({},...results.map(r=>r.answers)),usage:{input_tokens:results.reduce((n,r)=>n+r.usage.input_tokens,0),output_tokens:results.reduce((n,r)=>n+r.usage.output_tokens,0)},latencyMs:Date.now()-batchStart};
   settled.ai.totalLatencyMs+=result.latencyMs;settled.ai.failures=0;
   let applied={applied:0,rejected:0};
@@ -258,7 +275,7 @@ export default{
    }else if(url.pathname==='/api/report'){
     const {success}=await env.STATE_READ_LIMITER.limit({key:'vector-atc-report'});
     response=success?Response.json(await env.AIRPORT.getByName(objectName(env)).report(),{headers:{'Cache-Control':'no-store','Content-Disposition':'attachment; filename="vector-atc-report.json"'}}):new Response('Too many requests',{status:429});
-   }else if(url.pathname==='/api/health')response=Response.json({ok:true,version:'0.6.0'},{headers:{'Cache-Control':'no-store'}});
+   }else if(url.pathname==='/api/health')response=Response.json({ok:true,version:'0.6.1'},{headers:{'Cache-Control':'no-store'}});
    else if(url.pathname==='/'||/^\/assets\/[a-zA-Z0-9._-]+\.(js|css|woff2?)$/.test(url.pathname))response=await env.ASSETS.fetch(request);
    else response=new Response('Not found',{status:404});
   }catch{response=Response.json({error:'Sektör geçici olarak kullanılamıyor.'},{status:503});}

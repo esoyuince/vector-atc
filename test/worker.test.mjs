@@ -370,3 +370,47 @@ test('oversized study input is an archived infrastructure stop, not an unexplain
  assert.equal(c.record.study.status,'incomplete');assert.equal(c.record.study.stopReason,'input-too-large');assert.equal(h.calls.length,0);
  const entries=await journalEntries(c);assert.ok(entries.flatMap(e=>e.events).some(e=>e.kind==='study-stop'&&e.reason==='input-too-large'));
 });
+
+
+test('no viewer during durable dispatch intent means no outbound provider request',async t=>{
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only'}),c=h.controller,original=c.ctx.storage.put;
+ t.mock.method(c.ctx.storage,'put',async(k,v)=>{
+  await original(k,v);
+  if(typeof k==='object'&&k['airport-ltfm-v1']?.ai.mode==='evaluating')for(const p of c.presence.values())p.active=false;
+ });
+ await c.heartbeat('test-viewer',1,true);await c.alarm();
+ assert.equal(h.calls.length,0);assert.equal(c.record.sim.stats.aiApplied,0);
+ const events=(await journalEntries(c)).flatMap(e=>e.events);
+ assert.ok(events.some(e=>e.kind==='dispatch-cancelled'&&e.reason==='no-viewers-before-send'));
+});
+test('infrastructure stop remains visible without viewers',async t=>{
+ const h=await harness(t),c=h.controller;
+ for(const mode of ['archive-error','input-too-large','study-stopped']){
+  c.record.ai.mode=mode;c.record.ai.stopReason='fixture';assert.equal((await c.snapshot()).ai.mode,mode);
+ }
+});
+test('frozen run rejects an unexpected returned model without applying commands',async t=>{
+ const {createAirborneSimulation}=await import('../src/simulation.mjs');
+ const {initialStateFingerprint,runtimeVersions,provenance}=await import('../server/study-run.mjs');
+ const m={status:'frozen-local',runId:'model-drift',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds:60,maxWallSeconds:600,maxTotalInputTokens:1000000,stopForFavorableResults:false}};
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(m),RESEARCH_RUN_ID:m.runId}),c=h.controller;
+ t.mock.method(globalThis,'fetch',async(_u,opts)=>Response.json({...response(JSON.parse(opts.body)),model:'jev-other-version'}));
+ await c.heartbeat('test-viewer',1,true);await c.alarm();assert.equal(c.record.sim.stats.aiApplied,0);
+ assert.equal(c.record.study.status,'incomplete');assert.equal(c.record.study.stopReason,'returned-model-mismatch');
+});
+
+test('simultaneous alarm delivery and duplicate delivery do not duplicate a dispatch or application',async t=>{
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only'}),c=h.controller;
+ await c.heartbeat('duplicate-test-viewer',1,true);await Promise.all([c.alarm(),c.alarm(),c.alarm()]);
+ assert.equal(c.record.ai.frames,1);assert.equal(c.record.ai.last.applied,51);const calls=h.calls.length;
+ await c.alarm();assert.equal(h.calls.length,calls);assert.equal(c.record.sim.stats.aiApplied,51);
+ const events=(await journalEntries(c)).flatMap(e=>e.events);assert.equal(events.filter(e=>e.kind==='dispatch-intent').length,1);
+});
+test('restart after a persisted intent with unknown outcome cannot send it again',async t=>{
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only'}),c=h.controller;
+ const pending=structuredClone(c.record);pending.ai.mode='evaluating';pending.budget.tokens=1234;pending.budget.actualTokens=0;
+ await c.persist(pending,[{kind:'fixture-pending-dispatch'}]);const again=await harness(t,h.stored,{SIM_SCOPE:'airborne-only'});
+ assert.equal(again.controller.record.ai.mode,'archive-error');assert.equal(again.controller.record.budget.tokens,1234);
+ await again.controller.heartbeat('unknown-outcome-viewer',1,true);await again.controller.alarm();assert.equal(again.calls.length,0);
+ assert.ok((await journalEntries(again.controller)).flatMap(e=>e.events).some(e=>e.kind==='interrupted-dispatch'));
+});

@@ -22,3 +22,13 @@ test('checkpoint covers lifecycle, forecast, audit and episode state, not just f
   const a=JSON.parse((await j.read(0,0)).text),b=JSON.parse((await j.read(1,0)).text);assert.notEqual(a.stateSha256,b.stateSha256,JSON.stringify(change));
  }
 });
+
+test('queued journal writes snapshot their input before callers can mutate it',async()=>{
+ const s=storage(),j=await ResearchJournal.open(s),r={sim:{elapsed:0,revision:0,seed:42}},events=[{kind:'fixture',text:'original'}];
+ const pending=j.commit('state',r,events);r.sim.elapsed=999;events[0].text='mutated';await pending;
+ const text=(await j.read(0,0)).text;assert.equal(JSON.parse(text).simSeconds,0);assert.equal(JSON.parse(text).events[0].text,'original');assert.equal((await s.get('state')).sim.elapsed,0);
+});
+test('reopening a corrupt journal tail fails before accepting further observations',async()=>{
+ const s=storage(),j=await ResearchJournal.open(s);await j.commit('state',record,[]);
+ s.map.set(JOURNAL_KEY+':0:0','tampered');await assert.rejects(ResearchJournal.open(s),/integrity/);
+});

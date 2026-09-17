@@ -9,9 +9,22 @@ export function simulationStateSha256(sim){
 }
 export class ArchiveError extends Error{constructor(code='archive-write-failed'){super(code);this.name='ArchiveError';this.code=code;}}
 export class ResearchJournal{
- static async open(storage,maxBytes=64*1024*1024){const meta=await storage.get(JOURNAL_KEY);return new ResearchJournal(storage,meta??{version:1,nextSequence:0,headSha256:null,totalBytes:0,startedAt:null,coverageStartSimSeconds:null},maxBytes);}
+ static async open(storage,maxBytes=64*1024*1024){
+  const saved=await storage.get(JOURNAL_KEY);
+  const meta=saved??{version:1,nextSequence:0,headSha256:null,totalBytes:0,startedAt:null,coverageStartSimSeconds:null};
+  if(meta.version!==1||!Number.isSafeInteger(meta.nextSequence)||meta.nextSequence<0||!Number.isSafeInteger(meta.totalBytes)||meta.totalBytes<0)throw new ArchiveError('archive-metadata-invalid');
+  const journal=new ResearchJournal(storage,meta,maxBytes);
+  if(meta.nextSequence){
+   const d=await journal.read(meta.nextSequence-1);let text='';
+   if(!Number.isSafeInteger(d.chunkCount)||d.chunkCount<1||d.chunkCount>MAX_CHUNKS||d.sequence!==meta.nextSequence-1)throw new ArchiveError('archive-tail-invalid');
+   for(let i=0;i<d.chunkCount;i++)text+=(await journal.read(d.sequence,i)).text;
+   if(d.sha256!==meta.headSha256||await sha256(text)!==d.sha256||new TextEncoder().encode(text).length!==d.bytes)throw new ArchiveError('archive-tail-integrity');
+  }else if(meta.headSha256!==null||meta.totalBytes!==0)throw new ArchiveError('archive-empty-metadata-invalid');
+  return journal;
+ }
  constructor(storage,meta,maxBytes){this.storage=storage;this.meta=meta;this.maxBytes=maxBytes;this.queue=Promise.resolve();this.failed=false;}
  commit(recordKey,record,events=[]){
+  record=structuredClone(record);events=structuredClone(events); // Freeze before entering the asynchronous queue.
   const work=this.queue.then(async()=>{
    if(this.failed)throw new ArchiveError('archive-tail-uncertain');
    const seq=this.meta.nextSequence;

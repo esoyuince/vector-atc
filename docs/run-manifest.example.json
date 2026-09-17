@@ -10,7 +10,8 @@
     "context": "compact-state-geometry-v2",
     "control": "jev-command-observe-v1",
     "measurement": "swept-terminal-v2",
-    "evaluation": "vector-observational-v2"
+    "evaluation": "vector-observational-v2",
+    "traffic": "seeded-gates-v2"
   },
   "requestedModel": "jev-1.13.0",
   "initialStateSha256": null,

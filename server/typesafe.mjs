@@ -50,14 +50,33 @@ export function validateResponse(data,request){
  if(typeof data?.model!=='string'||data.model.length>80||!Number.isSafeInteger(data.usage?.input_tokens)||data.usage.input_tokens<0||!Number.isSafeInteger(data.usage?.output_tokens)||data.usage.output_tokens<0)return false;
  return Object.entries(request.questions).every(([id,q])=>{const a=data.answers?.[id],keys=Object.keys(q.criteria);return a?.type==='choice'&&keys.includes(a.choice)&&unit(a.confidence)&&a.probabilities&&Object.keys(a.probabilities).length===keys.length&&keys.every(k=>Object.hasOwn(a.probabilities,k)&&unit(a.probabilities[k]))&&Math.abs(Object.values(a.probabilities).reduce((n,v)=>n+v,0)-1)<.06&&a.probabilities[a.choice]>=Math.max(...Object.values(a.probabilities))-.011;});
 }
-export async function callTypeSafe(request,apiKey,{fetchImpl=fetch,signal}={}){
- const start=Date.now();let response;
- try{response=await fetchImpl('https://api.typesafe.ai/v1/systemone',{method:'POST',headers:{Authorization:'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify(request),signal:signal?AbortSignal.any([signal,AbortSignal.timeout(25000)]):AbortSignal.timeout(25000)});}catch{throw new Error('TypeSafe çağrısı tamamlanamadı.');}
- if(!response.ok){await response.body?.cancel();throw new Error(response.status===429||response.status===529?'TypeSafe kullanım sınırı/yoğunluk.':'TypeSafe isteği başarısız.');}
- const reader=response.body.getReader();let bytes=0;const parts=[];
- while(true){const {done,value}=await reader.read();if(done)break;bytes+=value.length;if(bytes>1000000){await reader.cancel();throw new Error('Model yanıtı boyut sınırını aştı.');}parts.push(value);}
+export class ProviderError extends Error {
+ constructor(code,message,status=null){super(message);this.name='ProviderError';this.code=code;this.status=status;}
+}
+export async function callTypeSafe(request,apiKey,{fetchImpl=fetch,signal}={}) {
+ const start=Date.now(),timeout=AbortSignal.timeout(25000),combined=signal?AbortSignal.any([signal,timeout]):timeout;
+ let response;
+ try {
+  response=await fetchImpl('https://api.typesafe.ai/v1/systemone',{method:'POST',headers:{Authorization:'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify(request),signal:combined});
+ } catch(error) {
+  const code=signal?.aborted?'provider-aborted':error?.name==='TimeoutError'||combined.reason?.name==='TimeoutError'?'provider-timeout':'provider-network-failure';
+  throw new ProviderError(code,'TypeSafe request did not complete.');
+ }
+ if(!response.ok) {
+  await response.body?.cancel().catch(()=>{});
+  const code=response.status===429?'provider-rate-limit':response.status===529?'provider-overloaded':'provider-http-failure';
+  throw new ProviderError(code,'TypeSafe kullan\u0131m hatas\u0131.',response.status);
+ }
+ if(!response.body)throw new ProviderError('provider-empty-response','TypeSafe response had no body.');
+ const reader=response.body.getReader(),parts=[];let bytes=0;
+ try {
+  while(true){const {done,value}=await reader.read();if(done)break;bytes+=value.length;
+   if(bytes>1000000){await reader.cancel().catch(()=>{});throw new ProviderError('provider-response-too-large','Model response exceeded the size limit.');}
+   parts.push(value);
+  }
+ }catch(error){if(error instanceof ProviderError)throw error;throw new ProviderError(signal?.aborted?'provider-aborted':combined.reason?.name==='TimeoutError'?'provider-timeout':'provider-stream-failure','Model response stream did not complete.');}
  const buffer=new Uint8Array(bytes);let offset=0;for(const p of parts){buffer.set(p,offset);offset+=p.length;}
- let data;try{data=JSON.parse(new TextDecoder().decode(buffer));}catch{throw new Error('Model yanıtı geçersiz.');}
- if(!validateResponse(data,request))throw new Error('Model yanıtı sözleşme kontrolünü geçemedi.');
+ let data;try{data=JSON.parse(new TextDecoder().decode(buffer));}catch{throw new ProviderError('provider-invalid-json','Model response is not valid JSON.');}
+ if(!validateResponse(data,request))throw new ProviderError('provider-contract-failure','Model yan\u0131t\u0131 s\u00f6zle\u015fme kontrol\u00fcnden ge\u00e7medi.');
  return {model:data.model,answers:Object.fromEntries(Object.entries(request.questions).map(([id,q])=>{const a=data.answers[id];return [id,{type:'choice',choice:a.choice,confidence:a.confidence,probabilities:Object.fromEntries(Object.keys(q.criteria).map(k=>[k,a.probabilities[k]]))}];})),usage:{input_tokens:data.usage.input_tokens,output_tokens:data.usage.output_tokens},latencyMs:Date.now()-start};
 }

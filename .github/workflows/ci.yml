@@ -1,0 +1,51 @@
+name: Offline validation
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: offline-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      AI_ENABLED: 'false'
+      WRANGLER_SEND_METRICS: 'false'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.19.0'
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm run verify:provenance
+      - run: npm run test:offline
+      - run: npm run build
+      - run: npm run verify:provenance
+      - run: git diff --exit-code -- server/build-provenance.mjs
+      - run: npm run check:worker:offline
+      - run: npm run soak:offline -- "$RUNNER_TEMP/vector-offline-soak" 300
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: synthetic-offline-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/vector-offline-soak/summary.json
+            ${{ runner.temp }}/vector-offline-soak/analysis.json
+          if-no-files-found: ignore
+          retention-days: 14

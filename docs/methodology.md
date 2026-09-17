@@ -85,7 +85,7 @@ Primary descriptive command metric:
 commands with >=1 detector finding / checked accepted aircraft-command bundles
 ~~~
 
-Also report published, demo and integration fractions, physical-limit requests, finding counts, per-rule counts and phase/ground-air strata. A command may have multiple basis categories; do not sum their fractions to produce an overall error fraction. Per-rule applicability denominators are not implemented, so these counts are not rates among eligible opportunities.
+Also report published, demo and integration fractions, physical-limit requests, finding counts, per-rule counts and phase/ground-air strata. A command may have multiple basis categories; do not sum their fractions to produce an overall error fraction. Runtime per-rule values remain counts. The verified offline analyzer additionally reconstructs per-rule applicability denominators from matching-source receipt states; those fractions are detector-defined opportunity rates, not independent regulatory compliance rates.
 
 Outcomes and airborne aircraft-hours use deltas from the same evaluation-start baseline. Composite event rate: 100 * (collision groups + ground impacts) / airborne aircraft-hours. Show count and exposure. Keep command findings, procedure episodes, runway conflicts, traffic encounters, throughput and service failures separate.
 
@@ -142,3 +142,7 @@ Frozen aviation data provenance is in [data-sources.json](data-sources.json). Th
 ## Implementation addendum
 
 See [simulation-policy-v2.md](simulation-policy-v2.md) for exact new assumptions and export/freeze commands. Runtime journal availability and local manifest status are reported separately from external preregistration and independent labels. A legacy measurement epoch is saved before a new evaluation baseline is started. A new study identity never resets the existing demo. Daily object-local budget and study cumulative cap are separate; neither is an account-wide charge cap.
+
+## Offline analysis and engineering acceptance
+
+See [offline-validation.md](offline-validation.md) for network-guarded tests, disk-backed soak, CI and verified CSV/JSON analysis. The analyzer requires matching source fingerprints, refuses missing/tampered/mixed data, verifies every state digest, and reports synthetic/unknown evidence separately. No hosted CI, independent rule review, production acceptance or real Jev performance is implied by a local pass.

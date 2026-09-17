@@ -118,3 +118,7 @@ VECTOR, TypeSafe'in sentetik hava trafiğini yönetmesini gözlemlemek için gel
 ## License and security
 
 Original project code is [MIT licensed](LICENSE), © 2026 Ender Soyuince. Dependencies and third-party source materials retain their respective rights. See [SECURITY.md](SECURITY.md) for credential handling and private vulnerability reporting.
+
+## Offline validation and analysis
+
+See [offline validation](docs/offline-validation.md). Run `npm run test:offline`, `npm run verify:provenance`, and `npm run check:worker:offline` without a provider key. `npm run soak:offline -- NEW_DIRECTORY 3600` exercises a one-hour simulated fixture with transactional disk storage and complete replay. `node scripts/analyze-research.mjs EXPORT_DIRECTORY NEW_DIRECTORY` verifies a matching-source export and creates command, rule, flight, outcome and resource tables. Synthetic usage is never reported as measured model performance. The CI workflow is validation-only, not automatic deployment.
