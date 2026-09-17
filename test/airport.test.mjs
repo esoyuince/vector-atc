@@ -20,10 +20,15 @@ test('waypoint crossing records violations with bounded pilot response and retai
  assert.equal(s.stats.altitudeViolations,1);assert.equal(s.stats.speedViolations,1);
  assert.equal(navigation(f,'RIXEN1P',280).index,1);
 });
-test('full-fleet request reservations fit per-request envelope in ground and airborne scenarios',()=>{
+test('full-fleet requests stay compact and fit the provider envelope',()=>{
  for(const airborne of [false,true]){
-  const s=createSimulation();if(airborne)for(const f of s.flights)if(f.phase==='taxi_out')f.phase='departure';
-  for(const p of batchPlans(makePlan(s)))assert.ok(Buffer.byteLength(JSON.stringify(buildRequest(p,'jev-1.13.0')))+4096<=80000);
+  const s=createSimulation(0,42);if(airborne)for(const f of s.flights)if(f.phase==='taxi_out')f.phase='departure';
+  const plan=makePlan(s);plan.state.trigger={reason:'scheduled',at:s.elapsed};
+  const batches=batchPlans(plan),requests=batches.map(p=>buildRequest(p,'jev-1.13.0')),bytes=requests.map(r=>Buffer.byteLength(JSON.stringify(r)));
+  assert.ok(bytes.every(n=>n+4096<=79000));
+  assert.equal(requests.reduce((n,r)=>n+Object.keys(r.questions).length,0),airborne?400:403);
+  assert.ok(batches.length<=(airborne?10:5));
+  assert.ok(bytes.reduce((a,b)=>a+b,0)<=(airborne?680000:390000));
  }
 });
 

@@ -7,6 +7,9 @@ registerHooks({resolve(specifier,context,next){
  return next(specifier,context);
 }});
 const {AirportSimulation,default:worker}=await import('../server/worker.mjs');
+const {makePlan}=await import('../src/simulation.mjs');
+const {batchPlans}=await import('../server/typesafe.mjs');
+const expectedFrameCalls=controller=>{const plan=makePlan(controller.record.sim);plan.state.trigger={reason:'scheduled',at:controller.record.sim.elapsed};return batchPlans(plan).length;};
 function response(request){
  return {model:'jev-1.13.0',answers:Object.fromEntries(Object.entries(request.questions).map(([id,q])=>{
   const c=id.startsWith('runway_')?'wait':id.endsWith('_route')?Object.keys(q.criteria)[0]:id.endsWith('_altitude')?'6000':id.endsWith('_speed')?'220':'1500';
@@ -25,7 +28,7 @@ async function harness(t,stored=new Map(),overrides={}){
 
 test('critical prediction preempts regular timer only for involved aircraft and honors budget',async t=>{
  const h=await harness(t),c=h.controller;
- await c.heartbeat('viewer',1,true);await c.alarm();
+ await c.heartbeat('viewer',1,true);await c.alarm();const fullFrameCalls=h.calls.length;
  const [a,b]=c.record.sim.flights.slice(50,52);
  for(const f of c.record.sim.flights)f.phase='taxi_out';
  for(const [i,f] of [a,b].entries()){
@@ -36,7 +39,7 @@ test('critical prediction preempts regular timer only for involved aircraft and 
  assert.equal(c.record.ai.nextAt,scheduledAt,'emergency does not postpone scheduled fleet deadline');
  assert.equal(c.record.frameRemaining,58);
  assert.equal(c.record.ai.last.trigger.reason,'predicted-conflict');assert.equal(c.record.ai.last.aircraft,2);
- assert.ok(c.record.sim.elapsed<60);assert.ok(h.calls.length>10);
+ assert.ok(c.record.sim.elapsed<60);assert.ok(h.calls.length>fullFrameCalls);
  const count=h.calls.length;h.advance(2000);await c.alarm();assert.equal(h.calls.length,count,'cooldown avoids request on each tick');
  c.record.ai.lastConflictAt=-100;c.env.AI_DAILY_TOKEN_LIMIT='10000';
  c.record.sim.alerts=[{a:a.id,b:b.id,critical:true,seconds:1}];c.record.sim.lastWall=Date.now()+2000;
@@ -65,9 +68,9 @@ test('visit counter counts active sessions once, persists and ignores read-only 
  assert.equal(h.stored.get('total-visits'),2);assert.equal(h.calls.length,0);
 });
 test('two viewer leases, sequenced leave, last viewer stop, and reload preserve budget without phantom time',async t=>{
- const h=await harness(t),c=h.controller;
+ const h=await harness(t),c=h.controller,expected=expectedFrameCalls(c);
  await c.heartbeat('viewer-a',1,true);await c.heartbeat('viewer-b',1,true);await c.alarm();
- assert.equal(h.calls.length,10);assert.equal(c.record.ai.last.aircraft,100);assert.equal(c.record.ai.last.questions,403);assert.equal(c.record.ai.last.applied,100);
+ assert.equal(h.calls.length,expected);assert.equal(c.record.ai.last.aircraft,100);assert.equal(c.record.ai.last.questions,403);assert.equal(c.record.ai.last.applied,100);
  const covered=h.calls.flatMap(r=>Object.keys(r.questions));assert.equal(new Set(covered).size,403);
  h.advance(2000);await c.alarm();assert.equal(c.record.sim.elapsed,2);
  await c.heartbeat('viewer-a',3,false);await c.heartbeat('viewer-a',2,true);assert.equal(c.viewers(),1);
@@ -76,31 +79,31 @@ test('two viewer leases, sequenced leave, last viewer stop, and reload preserve 
  await c.heartbeat('viewer-a',4,true);await c.alarm();assert.equal(c.record.sim.elapsed,elapsed);assert.ok(h.calls.length>callsBeforeAbsence);
 });
 test('lost disconnect expires in 20s; no API call or simulation catches up during absence',async t=>{
- const h=await harness(t),c=h.controller;await c.heartbeat('viewer',1,true);await c.alarm();
- h.advance(21000);await c.alarm();assert.equal(c.viewers(),0);assert.equal(h.alarm(),null);assert.equal(c.record.sim.elapsed,0);assert.equal(h.calls.length,10);
- h.advance(86400000);await c.snapshot();assert.equal(h.calls.length,10);assert.equal(h.alarm(),null);
+ const h=await harness(t),c=h.controller,expected=expectedFrameCalls(c);await c.heartbeat('viewer',1,true);await c.alarm();
+ h.advance(21000);await c.alarm();assert.equal(c.viewers(),0);assert.equal(h.alarm(),null);assert.equal(c.record.sim.elapsed,0);assert.equal(h.calls.length,expected);
+ h.advance(86400000);await c.snapshot();assert.equal(h.calls.length,expected);assert.equal(h.alarm(),null);
 });
 
 for(const disconnect of ['explicit','expired'])test(disconnect+' last viewer disconnect during provider calls aborts without applying commands',async t=>{
- const h=await harness(t),c=h.controller;let started=0,aborted=0,notify;
+ const h=await harness(t),c=h.controller,expected=expectedFrameCalls(c);let started=0,aborted=0,notify;
  const allStarted=new Promise(resolve=>{notify=resolve;});
  t.mock.method(globalThis,'fetch',async(_url,opts)=>new Promise((_resolve,reject)=>{
   opts.signal.addEventListener('abort',()=>{aborted++;reject(new DOMException('Aborted','AbortError'));},{once:true});
-  if(++started===10)notify();
+  if(++started===expected)notify();
  }));
  await c.heartbeat('viewer',1,true);const pending=c.alarm();await allStarted;
  if(disconnect==='explicit')await c.heartbeat('viewer',2,false);else{h.advance(21000);await c.alarm();}
  await pending;
- assert.equal(aborted,10);assert.equal(c.record.ai.mode,'idle');assert.equal(c.record.sim.stats.aiApplied,0);assert.equal(c.record.sim.elapsed,0);assert.equal(h.alarm(),null);
+ assert.equal(aborted,expected);assert.equal(c.record.ai.mode,'idle');assert.equal(c.record.sim.stats.aiApplied,0);assert.equal(c.record.sim.elapsed,0);assert.equal(h.alarm(),null);
  assert.ok(c.record.budget.tokens>0,'unknown upstream charge remains reserved');
 });
 test('failure pauses instead of local ATC; partial batch usage settles and unknown charge stays reserved',async t=>{
- const h=await harness(t),c=h.controller;let index=0;
+ const h=await harness(t),c=h.controller,expected=expectedFrameCalls(c);let index=0;
  t.mock.method(globalThis,'fetch',async(_url,opts)=>{index++;if(index===2)return new Response('private provider detail',{status:429});return Response.json(response(JSON.parse(opts.body)));});
  await c.heartbeat('viewer',1,true);await c.alarm();
  assert.equal(c.record.ai.mode,'backoff');assert.equal(c.record.frameRemaining,0);assert.equal(c.record.sim.stats.aiApplied,0);
- assert.ok(c.record.budget.tokens>9000);assert.equal(c.record.budget.actualTokens,9000);
- h.advance(5000);await c.alarm();assert.equal(c.record.sim.elapsed,0);assert.equal(index,10);
+ assert.ok(c.record.budget.tokens>(expected-1)*1000);assert.equal(c.record.budget.actualTokens,(expected-1)*1000);
+ h.advance(5000);await c.alarm();assert.equal(c.record.sim.elapsed,0);assert.equal(index,expected);
 });
 test('budget refuses an entire fleet frame before any outbound request; disabled AI also freezes',async t=>{
  const h=await harness(t,new Map(),{AI_DAILY_TOKEN_LIMIT:'10000'}),c=h.controller;
@@ -116,15 +119,15 @@ test('migration retains prior billed budget and starts new dataset, leaving hist
 });
 
 test('30-day grant cap preserves spent tokens and resumes a frame blocked by the old cap',async t=>{
- const h=await harness(t,new Map(),{AI_DAILY_TOKEN_LIMIT:'10000'}),c=h.controller;
+ const h=await harness(t,new Map(),{AI_DAILY_TOKEN_LIMIT:'10000'}),c=h.controller,expected=expectedFrameCalls(c);
  await c.heartbeat('viewer',1,true);await c.alarm();assert.equal(c.record.ai.budgetReason,'daily');
  assert.equal(c.record.ai.nextAt,Date.UTC(2026,8,18));
  c.record.budget.tokens=9000;c.record.budget.actualTokens=9000;
  c.record.ai.mode='awaiting';delete c.record.ai.budgetLimit; // Legacy pause before cap metadata existed.
  delete c.env.AI_DAILY_TOKEN_LIMIT;
  assert.equal(c.limits().dailyTokens,3800000);assert.ok(c.limits().dailyTokens/1000000*.042*30<5);
- h.advance(2000);await c.alarm();assert.equal(c.record.ai.mode,'active');assert.equal(h.calls.length,10);
- assert.equal(c.record.budget.actualTokens,19000);assert.equal(c.record.budget.tokens,19000);
+ h.advance(2000);await c.alarm();assert.equal(c.record.ai.mode,'active');assert.equal(h.calls.length,expected);
+ assert.equal(c.record.budget.actualTokens,9000+expected*1000);assert.equal(c.record.budget.tokens,9000+expected*1000);
 });
 test('presence HTTP rejects foreign origin, malformed and oversized bodies; state cannot mutate aircraft',async()=>{
  const limit={limit:async()=>({success:true})},env={PRESENCE_LIMITER:limit};

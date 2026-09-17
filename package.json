@@ -1,7 +1,7 @@
 {
   "name": "vector-typesafe-atc-demo",
   "private": true,
-  "version": "0.5.1",
+  "version": "0.5.2",
   "type": "module",
   "scripts": {
     "dev": "npm run build && wrangler dev --ip 127.0.0.1 --port 5173",

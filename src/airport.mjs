@@ -30,7 +30,7 @@ export function holdPath(id,speed=220){
  }
  path[path.length-1]=point;return path;
 }
-export function routeDescription(p){return p.kind+' '+p.id+(p.runway?' RWY '+p.runway:'')+' via '+p.legs.map(l=>l.fix).join(' → ');}
+export function routeDescription(p){return p.kind+(p.runway?' RWY '+p.runway:'')+' '+p.legs[0].fix+'→'+p.legs.at(-1).fix;}
 export function routeOptions(f){
  const choices={};
  if(f.mission==='arrival'){
@@ -40,7 +40,7 @@ export function routeOptions(f){
   for(const p of Object.values(PROCEDURES))if((p.kind==='APP'&&p.id.endsWith('_'+entry))||(p.kind==='MISSED'&&p.runway===RUNWAYS[f.lane].id))choices[p.id]=routeDescription(p);
  }else for(const p of Object.values(PROCEDURES))if(p.kind==='SID'&&p.runway===RUNWAYS[f.lane].id)choices[p.id]=routeDescription(p);
  if(f.phase!=='taxi_out'){
-  for(const h of data.holds.slice(0,3))choices['HOLD_'+h.fix]='Holding fix '+h.fix+', inbound '+h.inboundMag+' MAG, turn '+h.turn+', minimum '+h.minAltitude+' ft; demo 1-minute legs';
+  for(const h of data.holds.slice(0,3))choices['HOLD_'+h.fix]='Hold at '+h.fix+'; details in state.holds';
   for(const v of ['N','NE','E','SE','S','SW','W','NW'])choices['VECTOR_'+v]='ATC vector '+v+'; select a procedure to rejoin';
  }
  return choices;
