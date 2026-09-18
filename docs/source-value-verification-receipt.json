@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "dataset": "LTFM-SOUTH-v2",
+  "verifiedAt": "2026-09-18T08:38:23.663553+00:00",
+  "method": "PyMuPDF 1.27.2.3 text extraction from byte/hash-verified DHMI PDFs; regex checks; no OCR",
+  "sourceFileVerificationReceiptSha256": "914657bf12038d9bb26e08848b09b0739fc834be24ccda198a4ad438ab0884ad",
+  "contentAdjudication": false,
+  "externalDomainReview": false,
+  "spatialChartReviewStillRequired": true,
+  "providerCalls": 0,
+  "files": [
+    {
+      "sourceId": "SID_01",
+      "file": "LT_AD_2_LTFM_SID_01_en.pdf",
+      "bytes": 931113,
+      "sha256": "2bbcf60f7a1a40fd0ae5a2047f97fdf05f70bb20b25c3ff9960d0e641d5bc567",
+      "pages": 1
+    },
+    {
+      "sourceId": "SID_01_A",
+      "file": "LT_AD_2_LTFM_SID_01_A_en.pdf",
+      "bytes": 94293,
+      "sha256": "006bec89402eb60208bb34fe6a0606ac763c353f2b4a4b8c2a574044780776c2",
+      "pages": 1
+    },
+    {
+      "sourceId": "IAC_13",
+      "file": "LT_AD_2_LTFM_IAC_13_en.pdf",
+      "bytes": 1013920,
+      "sha256": "95c30321f526cfeedaf48e986e4383272f4fddc41f86446292dcc9f2e6c78b5c",
+      "pages": 1
+    },
+    {
+      "sourceId": "IAC_15",
+      "file": "LT_AD_2_LTFM_IAC_15_en.pdf",
+      "bytes": 858695,
+      "sha256": "0493e66c9d0329ac0b97c09177732af55945ceab266d4d8b855b11dae35b57cc",
+      "pages": 1
+    },
+    {
+      "sourceId": "IAC_17",
+      "file": "LT_AD_2_LTFM_IAC_17_en.pdf",
+      "bytes": 811202,
+      "sha256": "210da8bc9471337d53f26458eac43be00c909e34de94ed1e5ba12b096414a729",
+      "pages": 1
+    }
+  ],
+  "checks": [
+    {
+      "id": "sid-gradient-304-8000",
+      "sourceId": "SID_01",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "minClimbFtPerNm": 304,
+        "climbGradientUntil": 8000
+      },
+      "pattern": "PDG 5% \\(304FT/NM\\) up to 8000 FT",
+      "matchedText": "PDG 5% (304FT/NM) up to 8000 FT"
+    },
+    {
+      "id": "sid-fm047-first-leg",
+      "sourceId": "SID_01_A",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "fix": "FM047",
+        "minAltitude": 2100,
+        "maxSpeed": 250
+      },
+      "pattern": "FM047\\[A2100\\+;K250-;R\\]",
+      "matchedText": "FM047[A2100+;K250-;R]"
+    },
+    {
+      "id": "sid-fm051-first-leg",
+      "sourceId": "SID_01_A",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "fix": "FM051",
+        "minAltitude": 1800,
+        "maxSpeed": 250
+      },
+      "pattern": "FM051\\[A1800\\+;K250-;R\\]",
+      "matchedText": "FM051[A1800+;K250-;R]"
+    },
+    {
+      "id": "sid-fm072-first-leg",
+      "sourceId": "SID_01_A",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "fix": "FM072",
+        "minAltitude": 2030,
+        "maxSpeed": 250
+      },
+      "pattern": "FM072\\[A2030\\+;K250-;[LR]\\]",
+      "matchedText": "FM072[A2030+;K250-;L]"
+    },
+    {
+      "id": "hold-fm166",
+      "sourceId": "IAC_13",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "fix": "FM166",
+        "minAltitude": 3000,
+        "maxSpeed": 230
+      },
+      "pattern": "FM166\\[K230-;A3000\\]",
+      "matchedText": "FM166[K230-;A3000]"
+    },
+    {
+      "id": "hold-irded",
+      "sourceId": "IAC_15",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "fix": "IRDED",
+        "minAltitude": 5000,
+        "maxSpeed": 230
+      },
+      "pattern": "IRDED\\[A5000;K230-\\]",
+      "matchedText": "IRDED[A5000;K230-]"
+    },
+    {
+      "id": "hold-tibnu",
+      "sourceId": "IAC_17",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "fix": "TIBNU",
+        "minAltitude": 4000,
+        "maxSpeed": 230
+      },
+      "pattern": "TIBNU\\[K230-;A4000\\]",
+      "matchedText": "TIBNU[K230-;A4000]"
+    },
+    {
+      "id": "fap-floor-nedba",
+      "sourceId": "IAC_13",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "fix": "NEDBA",
+        "altitude": 3000
+      },
+      "pattern": "Descent on the GP below 3000 FT not permitted until passing NEDBA",
+      "matchedText": "Descent on the GP below 3000 FT not permitted until passing NEDBA"
+    },
+    {
+      "id": "fap-floor-usrof",
+      "sourceId": "IAC_15",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "fix": "USROF",
+        "altitude": 5000
+      },
+      "pattern": "Descent on the GP below 5000 FT not permitted until passing USROF",
+      "matchedText": "Descent on the GP below 5000 FT not permitted until passing USROF"
+    },
+    {
+      "id": "fap-floor-avteq",
+      "sourceId": "IAC_17",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "fix": "AVTEQ",
+        "altitude": 4000
+      },
+      "pattern": "Descent on the GP below 4000 FT not permitted until passing AVTEQ",
+      "matchedText": "Descent on the GP below 4000 FT not permitted until passing AVTEQ"
+    }
+  ],
+  "manualReview": [
+    {
+      "id": "star-constraint-to-fix-mapping",
+      "sourceId": "STAR_01",
+      "status": "manual-visual-review-required",
+      "reason": "Chart text extraction contains the values but does not preserve reliable spatial association between every constraint and fix."
+    },
+    {
+      "id": "transition-hold-speed-gazge-insta-ulqal",
+      "sourceId": "IAC_13",
+      "status": "manual-visual-review-required",
+      "reason": "IAF transition speed labels and holding graphics are spatially ambiguous in text extraction; no published hold maxSpeed is asserted."
+    },
+    {
+      "id": "holding-course-turn-geometry",
+      "sourceId": "IAC_13/IAC_15/IAC_17",
+      "status": "manual-visual-review-required",
+      "reason": "Inbound courses and turn-direction symbols require human visual chart review."
+    }
+  ]
+}

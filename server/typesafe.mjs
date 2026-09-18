@@ -1,7 +1,7 @@
 import {SURFACE_MODEL,EXIT_POLICY} from '../src/flight-events.mjs';
 import {ALTITUDES,SPEEDS,RATES,FIXES,PROCEDURES,AIRPORT} from '../src/airport.mjs';
 export const TYPESAFE_PROMPT_VERSION='jev-atc-airborne-observe-v2';
-export const TYPESAFE_CONTEXT_VERSION='compact-state-geometry-v2';
+export const TYPESAFE_CONTEXT_VERSION='compact-state-geometry-v3';
 const unit=n=>Number.isFinite(n)&&n>=0&&n<=1;
 const choiceNumbers=values=>Object.fromEntries(values.map(n=>[String(n),null]));
 const ALTITUDE_CHOICES=choiceNumbers(ALTITUDES),SPEED_CHOICES=choiceNumbers(SPEEDS),RATE_CHOICES=choiceNumbers(RATES);

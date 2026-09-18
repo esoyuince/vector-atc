@@ -10,6 +10,7 @@ import {createAirborneSimulation,createSimulation,advanceSimulation,makePlan,app
 import {buildRequest,callTypeSafe,batchPlans,TYPESAFE_PROMPT_VERSION,TYPESAFE_CONTEXT_VERSION} from './typesafe.mjs';
 import {DEFAULT_LIMITS,budgetAt,reserveBudget,settleBudget} from './budget.mjs';
 import {PILOT_CONTROL_POLICY} from '../src/pilot.mjs';
+import {DATASET_INFO} from '../src/airport.mjs';
 import {initializeCommandAudit} from '../src/command-audit.mjs';
 import {EVALUATION_PROTOCOL} from '../src/evaluation.mjs';
 const VIEWER_LEASE_MS=20000;
@@ -31,18 +32,27 @@ export class AirportSimulation extends DurableObject{
     await ctx.storage.put('airport-ltfm-v1',this.record);
    }
    if(env.CLEAN_START_PILOT==='20260917')this.record=await resetExperiment(ctx.storage,this.record,['airport-ltfm-v1','airport-before-pilot-v1','airport-v3','airport-v2','replay-ltfm-v1','replay-archive-ltfm-v2','replay-archive-ltfm-v2:0']);
-   // Tag the control-policy change without resetting counters, billing or replay.
+   if(this.record.sim.dataset!==DATASET_INFO.id){
+    const sim=this.record.sim,previousDataset=sim.dataset??'unknown',key='before-dataset-'+DATASET_INFO.id;
+    if(!await ctx.storage.get(key))await ctx.storage.put(key,{dataset:previousDataset,dataEpoch:sim.dataEpoch??null,measurementEpoch:sim.measurementEpoch??null,evaluation:structuredClone(sim.commandAudit?.evaluation??null),stats:structuredClone(sim.stats),elapsed:sim.elapsed});
+    sim.dataEpoch={dataset:DATASET_INFO.id,previousDataset,startedAt:Date.now(),elapsed:sim.elapsed,baseline:structuredClone(sim.stats)};
+    sim.dataset=DATASET_INFO.id;sim.measurementEpoch={policy:MEASUREMENT_POLICY,startedAt:Date.now(),elapsed:sim.elapsed,baseline:structuredClone(sim.stats)};
+    if(sim.commandAudit)delete sim.commandAudit.evaluation;
+    this.record.ai.nextAt=0;this.record.frameRemaining=0;this.record.paused=true;
+    await ctx.storage.put('airport-ltfm-v1',this.record);
+   }   // Tag the control-policy change without resetting counters, billing or replay.
    if(this.record.sim.controlEpoch?.policy!==PILOT_CONTROL_POLICY){
     const sim=this.record.sim;
     sim.controlEpoch={policy:PILOT_CONTROL_POLICY,previousPolicy:sim.controlEpoch?.policy??'procedure-target-repair-v1',startedAt:Date.now(),elapsed:sim.elapsed,baseline:structuredClone(sim.stats)};
     await ctx.storage.put('airport-ltfm-v1',this.record);
    }
-   if(this.record.sim.measurementEpoch?.policy!==MEASUREMENT_POLICY||this.record.sim.commandAudit?.evaluation?.protocolId&&this.record.sim.commandAudit.evaluation.protocolId!==EVALUATION_PROTOCOL){
-    const sim=this.record.sim,key='before-measurement-'+MEASUREMENT_POLICY;
+   {const sim=this.record.sim,measurementChanged=sim.measurementEpoch?.policy!==MEASUREMENT_POLICY,evaluationChanged=Boolean(sim.commandAudit?.evaluation?.protocolId&&sim.commandAudit.evaluation.protocolId!==EVALUATION_PROTOCOL);
+   if(measurementChanged||evaluationChanged){
+    const key=measurementChanged?'before-measurement-'+MEASUREMENT_POLICY:'before-evaluation-'+EVALUATION_PROTOCOL;
     if(!await ctx.storage.get(key))await ctx.storage.put(key,{measurementEpoch:sim.measurementEpoch??null,evaluation:sim.commandAudit?.evaluation??null,stats:structuredClone(sim.stats),elapsed:sim.elapsed});
     sim.measurementEpoch={policy:MEASUREMENT_POLICY,startedAt:Date.now(),elapsed:sim.elapsed,baseline:structuredClone(sim.stats)};
     if(sim.commandAudit)delete sim.commandAudit.evaluation;
-   }
+   }}
    if(initializeCommandAudit(this.record.sim))await ctx.storage.put('airport-ltfm-v1',this.record);
    if(env.SIM_SCOPE!=='legacy-test-fixture'&&enableAirborneScope(this.record.sim)){releaseDepartures(this.record.sim);this.record.ai.nextAt=0;this.record.frameRemaining=0;this.record.paused=true;await ctx.storage.put('airport-ltfm-v1',this.record);}
    if(this.record.study&&!manifest)throw new Error('A frozen run cannot resume without its manifest');
@@ -300,7 +310,7 @@ export default{
    }else if(url.pathname==='/api/report'){
     const {success}=await env.STATE_READ_LIMITER.limit({key:'vector-atc-report'});
     response=success?Response.json(await env.AIRPORT.getByName(objectName(env)).report(),{headers:{'Cache-Control':'no-store','Content-Disposition':'attachment; filename="vector-atc-report.json"'}}):new Response('Too many requests',{status:429});
-   }else if(url.pathname==='/api/health')response=Response.json({ok:true,version:'0.6.4'},{headers:{'Cache-Control':'no-store'}});
+   }else if(url.pathname==='/api/health')response=Response.json({ok:true,version:'0.6.5'},{headers:{'Cache-Control':'no-store'}});
    else if(url.pathname==='/'||/^\/assets\/[a-zA-Z0-9._-]+\.(js|css|woff2?)$/.test(url.pathname))response=await env.ASSETS.fetch(request);
    else response=new Response('Not found',{status:404});
   }catch{response=Response.json({error:'Sektör geçici olarak kullanılamıyor.'},{status:503});}

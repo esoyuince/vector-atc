@@ -1,5 +1,5 @@
 {
-  "id": "LTFM-SOUTH-v1",
+  "id": "LTFM-SOUTH-v2",
   "retrieved": "2026-09-17",
   "name": "Istanbul Airport",
   "icao": "LTFM",
@@ -752,7 +752,8 @@
       "minTurnAltitude": 900,
       "minClimbFtPerNm": 304,
       "climbGradientUntil": 8000,
-      "source": "SID_01_A"
+      "source": "SID_01_A",
+      "gradientSource": "SID_01"
     },
     "VADEN1F": {
       "id": "VADEN1F",
@@ -796,7 +797,8 @@
       "minTurnAltitude": 900,
       "minClimbFtPerNm": 304,
       "climbGradientUntil": 8000,
-      "source": "SID_01_A"
+      "source": "SID_01_A",
+      "gradientSource": "SID_01"
     },
     "TUDBU1G": {
       "id": "TUDBU1G",
@@ -837,7 +839,8 @@
       "minTurnAltitude": 760,
       "minClimbFtPerNm": 304,
       "climbGradientUntil": 8000,
-      "source": "SID_01_A"
+      "source": "SID_01_A",
+      "gradientSource": "SID_01"
     },
     "VADEN1G": {
       "id": "VADEN1G",
@@ -881,7 +884,8 @@
       "minTurnAltitude": 760,
       "minClimbFtPerNm": 304,
       "climbGradientUntil": 8000,
-      "source": "SID_01_A"
+      "source": "SID_01_A",
+      "gradientSource": "SID_01"
     },
     "TUDBU1H": {
       "id": "TUDBU1H",
@@ -922,7 +926,8 @@
       "minTurnAltitude": 760,
       "minClimbFtPerNm": 304,
       "climbGradientUntil": 8000,
-      "source": "SID_01_A"
+      "source": "SID_01_A",
+      "gradientSource": "SID_01"
     },
     "VADEN1H": {
       "id": "VADEN1H",
@@ -966,7 +971,8 @@
       "minTurnAltitude": 760,
       "minClimbFtPerNm": 304,
       "climbGradientUntil": 8000,
-      "source": "SID_01_A"
+      "source": "SID_01_A",
+      "gradientSource": "SID_01"
     },
     "ILS_16R_GAZGE": {
       "id": "ILS_16R_GAZGE",
@@ -1478,7 +1484,8 @@
       "minAltitude": 3000,
       "source": "IAC_13",
       "legSeconds": 60,
-      "legTimeIsDemoAssumption": true
+      "legTimeIsDemoAssumption": true,
+      "maxSpeed": 230
     },
     {
       "fix": "IRDED",
@@ -1487,7 +1494,8 @@
       "minAltitude": 5000,
       "source": "IAC_15",
       "legSeconds": 60,
-      "legTimeIsDemoAssumption": true
+      "legTimeIsDemoAssumption": true,
+      "maxSpeed": 230
     },
     {
       "fix": "TIBNU",
@@ -1496,7 +1504,8 @@
       "minAltitude": 4000,
       "source": "IAC_17",
       "legSeconds": 60,
-      "legTimeIsDemoAssumption": true
+      "legTimeIsDemoAssumption": true,
+      "maxSpeed": 230
     }
   ],
   "sources": [

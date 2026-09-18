@@ -272,7 +272,7 @@ test('evaluation export and request fingerprints persist without extra inference
  await c.heartbeat('viewer',1,true);await c.alarm();
  const e=c.record.ai.last.evidence,report=await c.report();
  assert.equal(e.evaluationProtocol,report.evaluation.protocolId);assert.equal(report.evaluation.commands.checkedCommands,100);
- assert.equal(e.promptVersion,'jev-atc-airborne-observe-v2');assert.equal(e.contextVersion,'compact-state-geometry-v2');assert.equal(e.requests.length,h.calls.length);
+ assert.equal(e.promptVersion,'jev-atc-airborne-observe-v2');assert.equal(e.contextVersion,'compact-state-geometry-v3');assert.equal(e.requests.length,h.calls.length);
  e.requests.forEach((b,index)=>{assert.equal(b.requestSha256,createHash('sha256').update(JSON.stringify(h.calls[index])).digest('hex'));assert.equal(b.requestedModel,h.calls[index].model);assert.equal(b.returnedModel,'jev-1.13.0');assert.equal(b.inputTokens,1000);});
  assert.equal(JSON.stringify(report).includes('fixture-only'),false);
  const before=structuredClone(report.evaluation),reloaded=await harness(t,h.stored);
@@ -450,4 +450,19 @@ test('study arm HTTP endpoint requires the operator secret and does not expose i
  for(const auth of [null,'Bearer wrong-token-that-is-long-enough-000000']){const headers=auth?{Authorization:auth}:{};const r=await worker.fetch(new Request('https://fixture.invalid/api/study/arm',{method:'POST',headers}),env);assert.equal(r.status,403);assert.equal(arms,0);}
  const ok=await worker.fetch(new Request('https://fixture.invalid/api/study/arm',{method:'POST',headers:{Authorization:'Bearer '+token}}),env);assert.equal(ok.status,200);const body=await ok.json();assert.equal(body.status,'running');assert.equal(arms,1);assert.ok(!JSON.stringify(body).includes(token));
  const demo=await worker.fetch(new Request('https://fixture.invalid/api/study/arm',{method:'POST',headers:{Authorization:'Bearer '+token}}),{...env,RESEARCH_RUN_ID:undefined,RUN_MANIFEST_JSON:undefined});assert.equal(demo.status,404);assert.equal(arms,1);
+});
+test('evaluation v2 to v3 migration starts a new baseline without rewriting cumulative history',async t=>{
+ const h=await harness(t),c=h.controller;await c.heartbeat('viewer',1,true);await c.alarm();c.record.sim.elapsed=123;c.record.sim.stats.collisions=2;c.record.budget.tokens=456;
+ const audit=c.record.sim.commandAudit,checked=audit.checkedCommands;assert.ok(checked>0);audit.evaluation.protocolId='vector-observational-v2';audit.evaluation.checkedCommands=77;audit.evaluation.commandsWithFindings=55;h.stored.set('before-measurement-swept-terminal-v2',{sentinel:'older-measurement-archive'});await c.persist(c.record);
+ const before=structuredClone(c.record),replay=JSON.stringify(await c.replayData()),reload=await harness(t,h.stored),next=reload.controller,e=next.record.sim.commandAudit.evaluation;
+ assert.equal(reload.calls.length,0);assert.equal(e.protocolId,'vector-observational-v3');assert.equal(e.baselineAuditChecked,checked);assert.equal(e.checkedCommands,0);assert.equal(e.commandsWithFindings,0);assert.equal(next.record.sim.elapsed,123);assert.equal(next.record.sim.stats.collisions,2);assert.equal(next.record.budget.tokens,456);assert.equal(JSON.stringify(await next.replayData()),replay);
+ assert.deepEqual(h.stored.get('before-measurement-swept-terminal-v2'),{sentinel:'older-measurement-archive'});const archived=h.stored.get('before-evaluation-vector-observational-v3');assert.equal(archived.evaluation.protocolId,'vector-observational-v2');assert.equal(archived.evaluation.checkedCommands,77);assert.deepEqual(archived.stats,before.sim.stats);
+});
+test('dataset v1 to v2 migration preserves history but starts new data/evaluation epochs',async t=>{
+ const h=await harness(t),c=h.controller;await c.heartbeat('viewer',1,true);await c.alarm();c.record.sim.dataset='LTFM-SOUTH-v1';delete c.record.sim.dataEpoch;c.record.sim.elapsed=123;c.record.sim.stats.collisions=2;c.record.budget.tokens=456;
+ const checked=c.record.sim.commandAudit.checkedCommands,beforeEval=structuredClone(c.record.sim.commandAudit.evaluation);assert.equal(beforeEval.protocolId,'vector-observational-v3');await c.persist(c.record);const before=structuredClone(c.record),replay=JSON.stringify(await c.replayData());
+ const reload=await harness(t,h.stored),next=reload.controller,e=next.record.sim.commandAudit.evaluation;assert.equal(reload.calls.length,0);assert.equal(next.record.sim.dataset,'LTFM-SOUTH-v2');assert.equal(next.record.sim.dataEpoch.dataset,'LTFM-SOUTH-v2');assert.equal(next.record.sim.dataEpoch.previousDataset,'LTFM-SOUTH-v1');assert.equal(next.record.sim.dataEpoch.elapsed,123);assert.deepEqual(next.record.sim.dataEpoch.baseline,before.sim.stats);
+ assert.equal(e.protocolId,'vector-observational-v3');assert.equal(e.baselineAuditChecked,checked);assert.equal(e.checkedCommands,0);assert.equal(next.record.sim.elapsed,123);assert.equal(next.record.sim.stats.collisions,2);assert.equal(next.record.budget.tokens,456);assert.equal(JSON.stringify(await next.replayData()),replay);
+ const archived=h.stored.get('before-dataset-LTFM-SOUTH-v2');assert.equal(archived.dataset,'LTFM-SOUTH-v1');assert.deepEqual(archived.evaluation,beforeEval);assert.deepEqual(archived.stats,before.sim.stats);assert.equal(archived.elapsed,123);
+ const report=await next.report();assert.equal(report.dataset.id,'LTFM-SOUTH-v2');assert.equal(report.dataEpochStats.collisions,0);
 });

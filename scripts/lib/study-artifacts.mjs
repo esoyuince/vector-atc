@@ -1,5 +1,5 @@
 import fs from 'node:fs';import path from 'node:path';import {canonicalSourceBytes,hashBytes} from './source-inventory.mjs';
-export const STUDY_PROTOCOL_FILES=['docs/methodology.md','docs/evaluation-spec.json','docs/study-design.md','docs/study-operations.md','docs/simulation-policy-v2.md','docs/data-sources.json','docs/source-verification-receipt.json','docs/rule-review-guide.md','src/ltfm-data.json'];
+export const STUDY_PROTOCOL_FILES=['docs/methodology.md','docs/evaluation-spec.json','docs/study-design.md','docs/study-operations.md','docs/simulation-policy-v2.md','docs/data-sources.json','docs/source-verification-receipt.json','docs/source-value-verification-receipt.json','docs/rule-review-guide.md','src/ltfm-data.json'];
 export function protocolSnapshot(root){
  return STUDY_PROTOCOL_FILES.map(file=>{const bytes=canonicalSourceBytes(fs.readFileSync(path.join(root,file)));return {file,bytes:bytes.length,sha256:hashBytes(bytes),content:bytes};});
 }

@@ -4,6 +4,7 @@ import {createSimulation,makePlan,applyFleetDecision,advanceSimulation,predicted
 import {FIXES,navigation} from '../src/airport.mjs';
 import {buildRequest,validateResponse} from '../server/typesafe.mjs';
 import {eventText} from '../src/i18n.mjs';
+import {procedureCommandIssues} from '../src/pilot.mjs';
 function fixture(route='HOLD_ULQAL',changes={}){
  const sim=createSimulation(0,42),f=sim.flights[50];sim.flights=[f];
  Object.assign(f,{type:'B738',phase:'arrival',lane:0,altitude:6000,speed:200,heading:90,verticalRate:0},changes);
@@ -62,7 +63,7 @@ test('audit records missing approach permission and the required SID gradient se
  f.arrival=null;f.requestedDeparture='VADEN1F';
  const sid=decision(sim,{route:'VADEN1F',altitude:8000,speed:220,rate:300});applyFleetDecision(sim,sid.plan,sid.answers);
  const issue=audit(sim).records[0].issues.find(i=>i.rule==='sid-climb-gradient');
- assert.equal(issue.requested,300);assert.ok(issue.min>1000);assert.equal(issue.requiredFtPerNm,304);
+ assert.equal(issue.requested,300);assert.ok(issue.min>1000);assert.equal(issue.requiredFtPerNm,304);assert.equal(issue.basis,'published');assert.equal(issue.source,'SID_01');
  assert.ok(issue.groundSpeedKt>220);assert.equal(f.command.rate,300);
 });
 test('physics ticks, forecasts and report reads never duplicate a command log; each new decision is counted',()=>{
@@ -95,4 +96,12 @@ test('bounded command history retains totals and does not consume the physical i
  assert.equal(sim.incidents.length,1);assert.equal(sim.incidents[0].type,'sentinel-collision');
  assert.equal(publicSimulation(sim).commandAudit.records,undefined,'polling need not send the complete command history');
  assert.equal(buildRequest(makePlan(sim),'jev-1.13.0').state.commandAudit,undefined,'audit must not add inference input');
+});
+test('published missed-approach hold speed limits keep their exact IAC provenance',()=>{
+ for(const row of [{route:'HOLD_FM166',source:'IAC_13'},{route:'HOLD_IRDED',source:'IAC_15'},{route:'HOLD_TIBNU',source:'IAC_17'}]){
+  const {f}=fixture(row.route);f.command={route:row.route,altitude:6000,speed:280,rate:1000,navigation:navigation({...f,command:null},row.route,280)};const issue=procedureCommandIssues(f).find(i=>i.rule==='holding-speed-limit');assert.ok(issue,row.route);assert.equal(issue.max,230);assert.equal(issue.basis,'published');assert.equal(issue.source,row.source);
+ }
+});
+test('transition hold speed fallback remains explicitly demo-only pending manual chart review',()=>{
+ for(const route of ['HOLD_GAZGE','HOLD_INSTA','HOLD_ULQAL']){const {sim}=fixture(route),d=decision(sim,{route,altitude:6000,speed:280});applyFleetDecision(sim,d.plan,d.answers);const issue=audit(sim).records[0].issues.find(i=>i.rule==='holding-speed-limit');assert.ok(issue,route);assert.equal(issue.max,200);assert.equal(issue.basis,'demo-rule');assert.equal(issue.source,'demo-holding-speed');}
 });

@@ -41,7 +41,7 @@ export function procedureCommandIssues(f,{includeClearance=false}={}){
  if(f.altitude<10000&&c.speed>250)add('low-altitude-speed-limit','low altitude speed limit','speed',c.speed,'kt IAS',{max:250},null,'demo-rule','demo-low-altitude-speed');
  if(p?.kind==='SID'&&f.altitude<p.climbGradientUntil&&c.altitude-f.altitude>150){
   const groundSpeedKt=trueAirspeed(f.speed,f.altitude),min=p.minClimbFtPerNm*groundSpeedKt/60;
-  if(c.rate<min)add('sid-climb-gradient','SID climb gradient','rate',c.rate,'ft/min',{min,requiredFtPerNm:p.minClimbFtPerNm,groundSpeedKt,untilAltitudeFt:p.climbGradientUntil},leg?.fix);
+  if(c.rate<min)add('sid-climb-gradient','SID climb gradient','rate',c.rate,'ft/min',{min,requiredFtPerNm:p.minClimbFtPerNm,groundSpeedKt,untilAltitudeFt:p.climbGradientUntil},leg?.fix,'published',p.gradientSource??p.source);
  }
  return issues;
 }

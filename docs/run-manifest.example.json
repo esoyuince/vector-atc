@@ -10,10 +10,10 @@
   "sourceTree": null,
   "versions": {
     "prompt": "jev-atc-airborne-observe-v2",
-    "context": "compact-state-geometry-v2",
+    "context": "compact-state-geometry-v3",
     "control": "jev-command-observe-v1",
     "measurement": "swept-terminal-v2",
-    "evaluation": "vector-observational-v2",
+    "evaluation": "vector-observational-v3",
     "traffic": "seeded-gates-v2"
   },
   "requestedModel": "jev-1.13.0",

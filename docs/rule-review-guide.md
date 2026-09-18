@@ -8,21 +8,21 @@ Generate the exact machine-readable packet and blank review outside the reposito
 npm run make:rule-review-packet -- REVIEW_PACKET.json REVIEW.json
 ~~~
 
-The packet contains the frozen source fingerprint, dataset retrieval date, source URLs/hashes, detector predicates/interpretations and simulator assumptions. Record source ID plus page/section (or an explicit assumption rationale) in every review-row evidence array. Use only accepted, accepted-with-limitation or rejected; limitations require notes. A rejected row blocks study freeze.
+The packet contains the frozen source fingerprint, dataset retrieval date, source URLs/hashes, detector predicates/interpretations and simulator assumptions. The machine-assisted source-value receipt provides hash-bound direct-text matches for selected numeric values, but keeps spatially ambiguous chart items in manual-review status and is not domain adjudication. Record source ID plus page/section (or an explicit assumption rationale) in every review-row evidence array. Use only accepted, accepted-with-limitation or rejected; limitations require notes. A rejected row blocks study freeze.
 
 ## Detector review map
 
 | Detector | Classification | Review target |
 | --- | --- | --- |
 | holding-minimum-altitude | published | Verify frozen hold minimum values against IAC_13 / IAC_15 / IAC_17 as applicable. |
-| holding-speed-limit | published-or-demo | Current frozen holds have no maxSpeed; fallback 200/230/265 kt is a simulator rule and must not be described as sourced LTFM speed data. |
+| holding-speed-limit | published-or-demo | FM166 / IRDED / TIBNU carry sourced 230 kt holding maxima from IAC_13 / IAC_15 / IAC_17. GAZGE / INSTA / ULQAL still use the 200/230/265 kt simulator fallback pending manual visual/domain review. |
 | published-altitude-floor | published | Verify exact/min altitude values on the active next leg against its frozen STAR/SID/IAC source. |
 | published-altitude-ceiling | published | Verify exact/max altitude values on the active next leg against its frozen source. |
 | published-speed-constraint | published | Verify exact/max speed values on the active next leg against its frozen source. |
 | fap-altitude-floor | demo-rule using published data | Verify the FAP altitude data; separately judge the simulator-wide interpretation that it acts as a pre-FAP floor. |
 | approach-clearance-mismatch | integration-rule | Judge software composition semantics only; do not label it an aviation regulation. |
 | low-altitude-speed-limit | demo-rule | Judge the declared simplified simulator rule; no LTFM source is claimed. |
-| sid-climb-gradient | published + kinematic interpretation | Verify SID_01_A gradient values; separately review the instantaneous no-wind ground-speed conversion. |
+| sid-climb-gradient | published + kinematic interpretation | The route coding is in SID_01_A, while the explicit PDG 5% (304 FT/NM) up to 8000 FT value is in SID_01. Separately review the instantaneous no-wind ground-speed conversion. |
 ## Simulator-assumption review map
 
 | Assumption | What is being reviewed |

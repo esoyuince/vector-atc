@@ -95,7 +95,7 @@ Recorded positions append approximately every five simulated seconds to paged Du
 
 ## Data and limitations
 
-The frozen `LTFM-SOUTH-v1` subset contains five physical runways, three active south-flow runways, two STARs, six SIDs, nine ILS transitions, three missed approaches and six holding fixes. [Source URLs and document hashes](docs/data-sources.json) record provenance. Full third-party charts and private experiment artifacts are not included.
+The frozen `LTFM-SOUTH-v2` subset contains five physical runways, three active south-flow runways, two STARs, six SIDs, nine ILS transitions, three missed approaches and six holding fixes. [Source URLs and document hashes](docs/data-sources.json) record provenance. The committed [source-availability receipt](docs/source-verification-receipt.json) and [machine-assisted selected-value receipt](docs/source-value-verification-receipt.json) add reproducible checks without claiming independent aviation adjudication. Full third-party charts and private experiment artifacts are not included.
 
 The model uses local NM projection and standard-atmosphere IAS/TAS approximation without wind, terrain, wake turbulence or full ARINC turn anticipation. Narrow/wide-body performance constants are demonstration estimates, not manufacturer AFM data. FAA-inspired holding entry sectors, 60/90-second timing and bank limits are modeling assumptions, not complete Turkish operational compliance or a current AIRAC database. See [third-party notices](THIRD_PARTY_NOTICES.md).
 

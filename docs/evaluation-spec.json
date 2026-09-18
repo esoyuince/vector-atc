@@ -1,12 +1,14 @@
 {
-  "protocolId": "vector-observational-v2",
+  "protocolId": "vector-observational-v3",
   "status": "development-draft-not-preregistered",
   "schemaVersion": 1,
+  "datasetId": "LTFM-SOUTH-v2",
+  "sourceValueVerification": "docs/source-value-verification-receipt.json",
   "studyDesign": "Single-arm, prespecified multi-run, budget-limited closed-loop software-system observation; no paid A/B required.",
   "targetScope": "Airborne control only; touchdown and documented departure exit may respawn after outcome measurement.",
   "currentScope": "Airborne-only runtime by default; explicit legacy test fixtures remain separately labeled.",
   "executionPolicy": "jev-command-observe-v1",
-  "auditVersion": "command-constraint-v1",
+  "auditVersion": "command-constraint-v2",
   "units": {
     "command": "One schema-accepted aircraft route/altitude/IAS/rate bundle in one plan revision and aircraft generation.",
     "finding": "One triggered detector rule within that command.",
@@ -25,7 +27,7 @@
       "id": "holding-speed-limit",
       "basis": "published-or-demo-rule",
       "predicate": "HOLD: command IAS > published maxSpeed if present; otherwise 200/230/265 kt for altitude <=6000/<=14000/>14000 ft at receipt.",
-      "interpretation": "Default speeds are simulator assumptions, not certified local limits."
+      "interpretation": "Use a published maxSpeed when the frozen hold carries one (FM166 / IRDED / TIBNU: 230 kt); otherwise use the simulator fallback table (GAZGE / INSTA / ULQAL). The fallback values are not certified local limits."
     },
     {
       "id": "published-altitude-floor",
@@ -67,7 +69,7 @@
       "id": "sid-climb-gradient",
       "basis": "published",
       "predicate": "SID, below climbGradientUntil and target > actual altitude +150 ft: command rate < minClimbFtPerNm * no-wind current groundSpeedKt /60.",
-      "interpretation": "Instantaneous kinematic test, not a full trajectory-feasibility assessment. Unknown speed is not a proven compliant departure."
+      "interpretation": "Instantaneous kinematic test, not a full trajectory-feasibility assessment. The 304 FT/NM to 8000 FT value is sourced to SID_01; route coding is sourced separately to SID_01_A. Unknown speed is not a proven compliant departure."
     }
   ],
   "metrics": {

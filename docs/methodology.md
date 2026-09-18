@@ -1,6 +1,8 @@
 # VECTOR: methodology and evaluation protocol
 
-Protocol: **vector-observational-v2**. Status: **development draft, not preregistered**.
+Protocol: **vector-observational-v3**. Status: **development draft, not preregistered**.
+
+Dataset: **LTFM-SOUTH-v2**. It supersedes v1 for new observations after correcting source attribution for the SID gradient and adding three directly evidenced published missed-approach holding-speed maxima. Historical v1 observations remain preserved but are not backfilled or pooled into v3 denominators.
 Machine-readable definitions: [evaluation-spec.json](evaluation-spec.json).
 Run template: [run-manifest.example.json](run-manifest.example.json).
 
@@ -46,6 +48,7 @@ Audit occurs after assigning the command and establishing its route/phase/cleara
 Evidence bases are separate:
 
 - **published**: a numeric limit comes from the frozen sourced procedure subset. Its executable target-comparison rule is still a simulator interpretation, not independently established regulatory ground truth.
+  In v3, FM166 / IRDED / TIBNU holding maxima are sourced 230 kt values; GAZGE / INSTA / ULQAL still use the demo holding-speed fallback. SID route coding remains sourced to SID_01_A, while the 304 FT/NM to 8000 FT gradient value is separately sourced to SID_01.
 - **demo-rule**: a simulator assumption, including the low-altitude 250 kt rule and fallback holding-speed table. The pre-FAP floor interpretation is also in this category although its altitude comes from a chart.
 - **integration-rule**: a composition constraint, such as the current ILS/landing-permission coupling. This must not be called an aviation regulation.
 
@@ -139,7 +142,7 @@ Independent rule adjudication is an external evidence artifact, not a software-t
 
 [2] TypeSafe, State. Accessed 2026-09-17. https://docs.typesafe.ai/concepts/state
 
-Frozen aviation data provenance is in [data-sources.json](data-sources.json). [source-verification-receipt.json](source-verification-receipt.json) records a 2026-09-17T23:54Z re-download in which all 10 listed DHMI URLs matched the frozen byte lengths and SHA-256 values exactly. This proves source-file identity/availability at that check, not semantic correctness, current AIRAC completeness or operational certification.
+Frozen aviation data provenance is in [data-sources.json](data-sources.json). [source-verification-receipt.json](source-verification-receipt.json) records a 2026-09-17T23:54Z re-download in which all 10 listed DHMI URLs matched the frozen byte lengths and SHA-256 values exactly. This proves source-file identity/availability at that check, not semantic correctness, current AIRAC completeness or operational certification. [source-value-verification-receipt.json](source-value-verification-receipt.json) records machine-assisted PyMuPDF direct-text checks for 10 selected sourced values. It explicitly leaves spatially ambiguous STAR constraints, transition-hold speed interpretation, and holding geometry for manual/domain review; it is not independent adjudication.
 
 ## Implementation addendum
 

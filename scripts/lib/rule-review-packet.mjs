@@ -1,4 +1,4 @@
-import data from '../../src/ltfm-data.json' with {type:'json'};import spec from '../../docs/evaluation-spec.json' with {type:'json'};import sourceReceipt from '../../docs/source-verification-receipt.json' with {type:'json'};import provenance from '../../server/build-provenance.mjs';import {SIMULATION_ASSUMPTIONS} from './rule-review.mjs';
+import data from '../../src/ltfm-data.json' with {type:'json'};import spec from '../../docs/evaluation-spec.json' with {type:'json'};import sourceReceipt from '../../docs/source-verification-receipt.json' with {type:'json'};import valueReceipt from '../../docs/source-value-verification-receipt.json' with {type:'json'};import provenance from '../../server/build-provenance.mjs';import {SIMULATION_ASSUMPTIONS} from './rule-review.mjs';
 const uniq=values=>[...new Set(values.filter(Boolean))].sort();
 const procedures=Object.values(data.procedures??{}),holds=data.holds??[];
 const procedureSources=predicate=>uniq(procedures.filter(predicate).map(p=>p.source));
@@ -10,7 +10,7 @@ function sourceHints(id){
  if(id==='published-altitude-ceiling')return {publishedSources:legSources(l=>Number.isFinite(l.altitude??l.maxAltitude)),demoFallback:[]};
  if(id==='published-speed-constraint')return {publishedSources:legSources(l=>Number.isFinite(l.speed??l.maxSpeed)),demoFallback:[]};
  if(id==='fap-altitude-floor')return {publishedSources:procedureSources(p=>p.kind==='APP'&&p.fap),demoFallback:['pre-FAP-floor-interpretation']};
- if(id==='sid-climb-gradient')return {publishedSources:procedureSources(p=>p.kind==='SID'&&Number.isFinite(p.minClimbFtPerNm)),demoFallback:[]};
+ if(id==='sid-climb-gradient')return {publishedSources:uniq(procedures.filter(p=>p.kind==='SID'&&Number.isFinite(p.minClimbFtPerNm)).map(p=>p.gradientSource??p.source)),demoFallback:[]};
  return {publishedSources:[],demoFallback:[id==='approach-clearance-mismatch'?'integration-rule':'simulator-rule']};
 }
 const assumptionDescriptions={
@@ -24,11 +24,11 @@ const assumptionDescriptions={
  'generic-aircraft-performance':'Generic transport-jet acceleration/bank/vertical-rate envelopes; not AFM-certified aircraft performance.'
 };
 export function makeRuleReviewPacket(){
- return {schemaVersion:1,status:'unadjudicated-review-packet',sourceFingerprint:provenance.sourceFingerprint,dataset:{id:data.id,retrieved:data.retrieved,sources:data.sources,sourceAvailability:{verifiedAt:sourceReceipt.verifiedAt,method:sourceReceipt.method,allMatch:sourceReceipt.allMatch,contentAdjudication:sourceReceipt.contentAdjudication,files:sourceReceipt.results.map(r=>({name:r.name,url:r.url,bytes:r.actualBytes,sha256:r.actualSha256}))}},evaluationProtocol:spec.protocolId,commandRules:spec.commandRules.map(rule=>({...rule,...sourceHints(rule.id)})),simulationAssumptions:SIMULATION_ASSUMPTIONS.map(id=>({id,description:assumptionDescriptions[id],classification:'simulator-assumption-review'})),reviewInstructions:{decisionValues:['accepted','accepted-with-limitation','rejected'],evidenceRequirement:'Record source ID/page/section or explicit simulator-assumption rationale for every row.',independence:'Software cannot establish reviewer identity, expertise or independence.'}};
+ return {schemaVersion:1,status:'unadjudicated-review-packet',sourceFingerprint:provenance.sourceFingerprint,dataset:{id:data.id,retrieved:data.retrieved,sources:data.sources,sourceAvailability:{verifiedAt:sourceReceipt.verifiedAt,method:sourceReceipt.method,allMatch:sourceReceipt.allMatch,contentAdjudication:sourceReceipt.contentAdjudication,files:sourceReceipt.results.map(r=>({name:r.name,url:r.url,bytes:r.actualBytes,sha256:r.actualSha256}))},sourceValueVerification:{dataset:valueReceipt.dataset,verifiedAt:valueReceipt.verifiedAt,method:valueReceipt.method,contentAdjudication:valueReceipt.contentAdjudication,externalDomainReview:valueReceipt.externalDomainReview,spatialChartReviewStillRequired:valueReceipt.spatialChartReviewStillRequired,checks:valueReceipt.checks,manualReview:valueReceipt.manualReview}},evaluationProtocol:spec.protocolId,commandRules:spec.commandRules.map(rule=>({...rule,...sourceHints(rule.id)})),simulationAssumptions:SIMULATION_ASSUMPTIONS.map(id=>({id,description:assumptionDescriptions[id],classification:'simulator-assumption-review'})),reviewInstructions:{decisionValues:['accepted','accepted-with-limitation','rejected'],evidenceRequirement:'Record source ID/page/section or explicit simulator-assumption rationale for every row.',independence:'Software cannot establish reviewer identity, expertise or independence.'}};
 }
 export function validateRuleReviewPacket(packet){
  if(packet?.schemaVersion!==1||packet.status!=='unadjudicated-review-packet'||packet.sourceFingerprint!==provenance.sourceFingerprint||packet.dataset?.id!==data.id||packet.dataset?.retrieved!==data.retrieved||packet.evaluationProtocol!==spec.protocolId)throw Error('Review packet identity/source mismatch');
- if(JSON.stringify(packet.dataset.sources)!==JSON.stringify(data.sources))throw Error('Review packet source list mismatch');
- const expectedRules=makeRuleReviewPacket().commandRules;if(JSON.stringify(packet.commandRules)!==JSON.stringify(expectedRules))throw Error('Review packet detector definitions mismatch');
- if(JSON.stringify(packet.simulationAssumptions)!==JSON.stringify(makeRuleReviewPacket().simulationAssumptions))throw Error('Review packet assumptions mismatch');return packet;
+ const expected=makeRuleReviewPacket();if(JSON.stringify(packet.dataset)!==JSON.stringify(expected.dataset))throw Error('Review packet dataset evidence mismatch');
+ const expectedRules=expected.commandRules;if(JSON.stringify(packet.commandRules)!==JSON.stringify(expectedRules))throw Error('Review packet detector definitions mismatch');
+ if(JSON.stringify(packet.simulationAssumptions)!==JSON.stringify(expected.simulationAssumptions))throw Error('Review packet assumptions mismatch');return packet;
 }

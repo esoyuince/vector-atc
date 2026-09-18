@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "status": "unreviewed",
-  "dataset": "LTFM-SOUTH-v1",
-  "evaluationProtocol": "vector-observational-v2",
+  "dataset": "LTFM-SOUTH-v2",
+  "evaluationProtocol": "vector-observational-v3",
   "reviewPacketSha256": null,
   "reviewer": {"name": null, "affiliation": null, "role": null, "reviewedAt": null},
-  "sourceFiles": ["docs/data-sources.json", "docs/evaluation-spec.json", "docs/simulation-policy-v2.md", "docs/study-design.md"],
+  "sourceFiles": ["docs/data-sources.json", "docs/source-verification-receipt.json", "docs/source-value-verification-receipt.json", "docs/evaluation-spec.json", "docs/simulation-policy-v2.md", "docs/study-design.md", "docs/rule-review-guide.md"],
   "rules": [
     {"id":"holding-minimum-altitude","decision":null,"evidence":[],"notes":null},
     {"id":"holding-speed-limit","decision":null,"evidence":[],"notes":null},

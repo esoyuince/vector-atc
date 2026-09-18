@@ -1,7 +1,7 @@
 {
   "name": "vector-typesafe-atc-demo",
   "private": true,
-  "version": "0.6.4",
+  "version": "0.6.5",
   "type": "module",
   "scripts": {
     "dev": "npm run build && wrangler dev --ip 127.0.0.1 --port 5173",
@@ -25,7 +25,8 @@
     "aggregate:study": "node --import ./scripts/offline-guard.mjs scripts/aggregate-study.mjs",
     "make:rule-review-packet": "node --import ./scripts/offline-guard.mjs scripts/make-rule-review-packet.mjs",
     "verify:aviation-sources": "node scripts/verify-aviation-sources.mjs",
-    "arm:study": "node scripts/arm-study.mjs"
+    "arm:study": "node scripts/arm-study.mjs",
+    "verify:aviation-values": "python scripts/verify-aviation-values.py"
   },
   "dependencies": {
     "react": "^19.0.0",

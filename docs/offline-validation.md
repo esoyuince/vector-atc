@@ -62,6 +62,8 @@ The closure tests cover viewer departure before dispatch, concurrent/duplicate h
 
 The optional networked command `npm run verify:aviation-sources -- NEW_RECEIPT.json` re-downloads only the public DHMI URLs listed in `docs/data-sources.json` and compares exact byte lengths/SHA-256 values. It does not call Jev/TypeSafe and is intentionally not part of offline CI. The committed receipt records 10/10 exact matches. The PDFs themselves are not committed, and hash identity is not domain adjudication.
 
+Given a local directory containing those hash-verified PDFs, npm run verify:aviation-values -- PDF_DIRECTORY NEW_VALUE_RECEIPT.json uses locally installed Python + PyMuPDF (the committed receipt used PyMuPDF 1.27.2.3) text extraction without OCR to check only prespecified direct-text patterns. The committed value receipt currently records 10 direct checks and 3 manual-review items. STAR constraint-to-fix spatial mapping, GAZGE/INSTA/ULQAL holding-speed interpretation, and holding geometry remain manual/domain-review work. This command does not call Jev/TypeSafe and is not independent adjudication.
+
 ## Explicit study start
 
 Frozen evaluated runs load as `ready`. The operator client `npm run arm:study -- https://STUDY_HOST` requires `STUDY_ARM_TOKEN` and is intentionally not executed by offline CI. Unit tests inject a fake fetch to validate HTTPS/token/contract behavior without a network call. The real arm action is part of production/evaluated-run operations, not offline acceptance. Wall-time analysis begins at the verified `study-armed` journal event.
