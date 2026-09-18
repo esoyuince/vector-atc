@@ -7,6 +7,7 @@ import {offlineHarness,exportLocalJournal} from '../scripts/lib/offline-harness.
 import {analyzeResearch,applicableRules,ratio} from '../scripts/lib/research-analysis.mjs';
 import {readExportManifest,verifiedEntries} from '../scripts/lib/verified-export.mjs';
 import {sha256} from '../server/research-journal.mjs';
+import {initialStateFingerprint,runtimeVersions,provenance} from '../server/study-run.mjs';
 import {createSimulation} from '../src/simulation.mjs';
 import {navigation} from '../src/airport.mjs';
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'vector-analysis-test-'));let base,expected;
@@ -58,4 +59,19 @@ test('rule applicability includes satisfied rules and excludes unrelated operati
 test('verified reader also catches head and total-size mismatches',async()=>{
  const dir=copy(),m=await readExportManifest(dir);m.meta.headSha256='a'.repeat(64);
  await assert.rejects(async()=>{for await(const e of verifiedEntries(dir,m))void e;},/Head hash/);
+});
+test('study analysis wall-time starts at explicit arm, not journal creation',async()=>{
+ const dir=copy(),manifest=JSON.parse(fs.readFileSync(path.join(dir,'manifest.json')));let initialSim=null,armSequence=null,lastSequence=manifest.entries.length-1;
+ for(let i=0;i<manifest.entries.length;i++){const entry=JSON.parse(fs.readFileSync(path.join(dir,String(i).padStart(8,'0')+'.json')));const init=entry.events.find(e=>e.kind==='initial-state');if(init)initialSim=init.sim;if(armSequence===null&&entry.events.some(e=>e.kind==='dispatch-intent'))armSequence=i;}
+ assert.ok(initialSim);assert.ok(Number.isInteger(armSequence)&&armSequence>0);
+ const study={status:'frozen-local',executionStartPolicy:'explicit-operator-arm-v1',runId:'analysis-study',scope:'airborne-handoff-v1',seed:initialSim.initialSeed,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(initialSim),stopping:{targetSimulatedSeconds:2,maxWallSeconds:60,maxTotalInputTokens:1000000,stopForFavorableResults:false},independentRuleReview:false,reviewPacketSha256:null,ruleReviewSha256:null};
+ await rehash(dir,entry=>{
+  entry.recordedAt=1000+entry.sequence*1000;
+  for(const event of entry.events)if(event.kind==='initial-state'){event.manifest=study;event.evidenceClass='live-study';}
+  entry.events=entry.events.filter(e=>e.kind!=='evidence-class');
+  if(entry.sequence===armSequence)entry.events.unshift({kind:'study-armed',runId:study.runId,at:entry.recordedAt});
+  if(entry.sequence===lastSequence)entry.events.push({kind:'study-stop',reason:'target-exposure'});
+ });
+ const result=await analyzeResearch(dir);assert.equal(result.evidenceClass,'live-study');assert.equal(result.prefixStatus,'completed');assert.equal(result.stopReason,'target-exposure');
+ assert.ok(result.archiveRecordedAt.first<result.recordedAt.first);assert.equal(result.recordedAt.first,1000+armSequence*1000);assert.equal(result.recordedAt.last,1000+lastSequence*1000);assert.equal(result.recordedAt.wallDurationMs,result.recordedAt.last-result.recordedAt.first);assert.equal(result.studyArm.journalRecordedAt,result.recordedAt.first);assert.match(result.outcomes.window,/Explicit study arm/);
 });

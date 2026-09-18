@@ -72,12 +72,12 @@ The no-repair policy is an intentional synthetic experiment, not real pilot oper
 
 ## Methodology and evaluation
 
-[Methodology](docs/methodology.md), the [evaluation specification](docs/evaluation-spec.json) and a [run-manifest template](docs/run-manifest.example.json) define units, detector rules, denominators, provenance and limits. This is a single-arm development protocol, not a preregistered or completed Jev study. No paid A/B runs are required.
+[Methodology](docs/methodology.md), the [evaluation specification](docs/evaluation-spec.json), [multi-run study design](docs/study-design.md), [evaluated-run operations](docs/study-operations.md) and the [run-manifest template](docs/run-manifest.example.json) define units, detector rules, denominators, seed selection, provenance and limits. This is a single-arm development protocol, not a preregistered or completed Jev study. No paid A/B runs are required.
 
 Schema-valid out-of-procedure commands are applied unchanged and logged separately from measured violations. Published-data conflicts, simulator assumptions and integration conflicts have separate counters; physical limits are another category. The report evaluation section provides numerator/denominator pairs, phase and air/ground strata, an observation-start baseline and missing-data flags. Zero denominators produce null, not a safety claim. Latest evidence includes request hashes, prompt/context/protocol versions and per-batch usage/model identities; evaluation logs are not sent back to Jev.
 
 Default ground-control questions are removed. UI logs remain bounded; complete new observations are available in the separate research journal. Local manifest freezing and runtime stops are implemented. Independent rule adjudication and real-provider acceptance remain pending. Historical evidence is not backfilled or relabeled.
-Offline engineering acceptance also includes guarded coverage thresholds, deterministic seed sweeps, source/hash consistency checks and adversarial numeric-invariant tests. `docs/rule-review-template.json` is deliberately unapproved; after an external review, `attach:rule-review` links its exact SHA-256 into a new frozen manifest and `preflight:study` verifies that link. Software tests never create independent-review status.
+Offline engineering acceptance also includes guarded coverage thresholds, deterministic seed sweeps, source/hash consistency checks and adversarial numeric-invariant tests. `docs/rule-review-template.json` is deliberately unapproved; `make:rule-review-packet` freezes the detector/source packet; after an external review, `attach:rule-review` links both packet and review SHA-256 into a new manifest and `preflight:study` verifies the full chain. Software tests never create independent-review status. Frozen evaluated runs additionally require an operator-secret arm; public viewers cannot start or pause them.
 
 ## Reports, budget and replay
 

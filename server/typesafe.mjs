@@ -5,7 +5,8 @@ export const TYPESAFE_CONTEXT_VERSION='compact-state-geometry-v2';
 const unit=n=>Number.isFinite(n)&&n>=0&&n<=1;
 const choiceNumbers=values=>Object.fromEntries(values.map(n=>[String(n),null]));
 const ALTITUDE_CHOICES=choiceNumbers(ALTITUDES),SPEED_CHOICES=choiceNumbers(SPEEDS),RATE_CHOICES=choiceNumbers(RATES);
-const REQUEST_LIMIT=79000,RESERVE_BYTES=4096;
+export const REQUEST_LIMIT=79000,RESERVE_BYTES=4096;
+export const requestEnvelopeBytes=request=>new TextEncoder().encode(JSON.stringify(request)).length+RESERVE_BYTES;
 const trafficRow=f=>[f.id,f.phase,...f.positionNm,f.altitudeFt,f.speedKt,f.headingDeg,f.verticalRateFpm,f.waitSeconds,f.command?[f.command.route,f.command.altitudeFt,f.command.speedKt,f.command.verticalRateFpm]:null,f.procedure.nextLeg?.fix||null,f.pilot?[...(f.pilot.constraintWarnings||[]),...(f.pilot.unable||[])]:[]];
 const compactRunway=r=>({id:r.id,thresholdNm:[r.x,r.y].map(n=>Math.round(n*1000)/1000),active:r.active,elevation:r.elevation,lengthM:r.lengthM,headingTrue:r.headingTrue,reserved:r.reserved||null,reservations:r.reservations||[],occupants:r.occupants||[],completed:r.completed||0});
 function aircraftContext(f){
@@ -29,7 +30,7 @@ export function batchPlans(plan,size=24){
  if(!Number.isSafeInteger(size)||size<1||size>100)throw new RangeError('Batch size must be an integer from 1 to 100.');
  const batches=[];let start=0;
  while(start<plan.flights.length){let take=Math.min(size,plan.flights.length-start),batch;
-  while(take>0){batch=makeBatch(plan,plan.flights.slice(start,start+take),start===0&&plan.runways.length>0);const bytes=new TextEncoder().encode(JSON.stringify(buildRequest(batch,'jev-1.13.0'))).length+RESERVE_BYTES;if(bytes<=REQUEST_LIMIT)break;take--;}
+  while(take>0){batch=makeBatch(plan,plan.flights.slice(start,start+take),start===0&&plan.runways.length>0);const bytes=requestEnvelopeBytes(buildRequest(batch,'jev-1.13.0'));if(bytes<=REQUEST_LIMIT)break;take--;}
   if(!take)throw new InputEnvelopeError();batches.push(batch);start+=take;
  }
  return batches;

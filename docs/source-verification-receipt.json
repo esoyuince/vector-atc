@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-09-17T23:54:23.152Z",
+  "method": "HTTPS GET from listed DHMI URLs; exact byte length and SHA-256 comparison",
+  "allMatch": true,
+  "contentAdjudication": false,
+  "providerCalls": 0,
+  "results": [
+    {
+      "name": "LT_AD_2_LTFM_en",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_en.pdf",
+      "expectedBytes": 2974760,
+      "actualBytes": 2974760,
+      "expectedSha256": "74cb1c6a88139aa785df1bc930cf39a6d15ef1899f63270871a70a6d5d7beed5",
+      "actualSha256": "74cb1c6a88139aa785df1bc930cf39a6d15ef1899f63270871a70a6d5d7beed5",
+      "bytesMatch": true,
+      "sha256Match": true
+    },
+    {
+      "name": "LT_AD_2_LTFM_STAR_01_en",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_STAR_01_en.pdf",
+      "expectedBytes": 754956,
+      "actualBytes": 754956,
+      "expectedSha256": "5358189d2246bd2bfb65f586430c101a69d1d14d4b13ba67b2d8fa6e42dfe2d1",
+      "actualSha256": "5358189d2246bd2bfb65f586430c101a69d1d14d4b13ba67b2d8fa6e42dfe2d1",
+      "bytesMatch": true,
+      "sha256Match": true
+    },
+    {
+      "name": "LT_AD_2_LTFM_STAR_01_A_en",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_STAR_01_A_en.pdf",
+      "expectedBytes": 76667,
+      "actualBytes": 76667,
+      "expectedSha256": "d95bf6b32d55ecf494fd751ae063cf8e6a904e79621a1db5b3d8604358741d9e",
+      "actualSha256": "d95bf6b32d55ecf494fd751ae063cf8e6a904e79621a1db5b3d8604358741d9e",
+      "bytesMatch": true,
+      "sha256Match": true
+    },
+    {
+      "name": "LT_AD_2_LTFM_SID_01_en",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_SID_01_en.pdf",
+      "expectedBytes": 931113,
+      "actualBytes": 931113,
+      "expectedSha256": "2bbcf60f7a1a40fd0ae5a2047f97fdf05f70bb20b25c3ff9960d0e641d5bc567",
+      "actualSha256": "2bbcf60f7a1a40fd0ae5a2047f97fdf05f70bb20b25c3ff9960d0e641d5bc567",
+      "bytesMatch": true,
+      "sha256Match": true
+    },
+    {
+      "name": "LT_AD_2_LTFM_SID_01_A_en",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_SID_01_A_en.pdf",
+      "expectedBytes": 94293,
+      "actualBytes": 94293,
+      "expectedSha256": "006bec89402eb60208bb34fe6a0606ac763c353f2b4a4b8c2a574044780776c2",
+      "actualSha256": "006bec89402eb60208bb34fe6a0606ac763c353f2b4a4b8c2a574044780776c2",
+      "bytesMatch": true,
+      "sha256Match": true
+    },
+    {
+      "name": "LT_AD_2_LTFM_IAC_13_en",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_IAC_13_en.pdf",
+      "expectedBytes": 1013920,
+      "actualBytes": 1013920,
+      "expectedSha256": "95c30321f526cfeedaf48e986e4383272f4fddc41f86446292dcc9f2e6c78b5c",
+      "actualSha256": "95c30321f526cfeedaf48e986e4383272f4fddc41f86446292dcc9f2e6c78b5c",
+      "bytesMatch": true,
+      "sha256Match": true
+    },
+    {
+      "name": "LT_AD_2_LTFM_IAC_19_en",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_IAC_19_en.pdf",
+      "expectedBytes": 1091600,
+      "actualBytes": 1091600,
+      "expectedSha256": "055cf443e5641127121d22ab1976c29dd3bf88d1466fc415d402fcc2d3d8a556",
+      "actualSha256": "055cf443e5641127121d22ab1976c29dd3bf88d1466fc415d402fcc2d3d8a556",
+      "bytesMatch": true,
+      "sha256Match": true
+    },
+    {
+      "name": "LT_AD_2_LTFM_IAC_25_en",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_IAC_25_en.pdf",
+      "expectedBytes": 927668,
+      "actualBytes": 927668,
+      "expectedSha256": "87d6a95b1070f96000e1a58a23cc1171235af65f3ce82acbc06429c1675179a6",
+      "actualSha256": "87d6a95b1070f96000e1a58a23cc1171235af65f3ce82acbc06429c1675179a6",
+      "bytesMatch": true,
+      "sha256Match": true
+    },
+    {
+      "name": "LT_AD_2_LTFM_IAC_15_en",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_IAC_15_en.pdf",
+      "expectedBytes": 858695,
+      "actualBytes": 858695,
+      "expectedSha256": "0493e66c9d0329ac0b97c09177732af55945ceab266d4d8b855b11dae35b57cc",
+      "actualSha256": "0493e66c9d0329ac0b97c09177732af55945ceab266d4d8b855b11dae35b57cc",
+      "bytesMatch": true,
+      "sha256Match": true
+    },
+    {
+      "name": "LT_AD_2_LTFM_IAC_17_en",
+      "url": "https://www.dhmi.gov.tr/AIPDocuments/LT_AD_2_LTFM_IAC_17_en.pdf",
+      "expectedBytes": 811202,
+      "actualBytes": 811202,
+      "expectedSha256": "210da8bc9471337d53f26458eac43be00c909e34de94ed1e5ba12b096414a729",
+      "actualSha256": "210da8bc9471337d53f26458eac43be00c909e34de94ed1e5ba12b096414a729",
+      "bytesMatch": true,
+      "sha256Match": true
+    }
+  ]
+}

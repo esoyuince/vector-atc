@@ -5,9 +5,9 @@ import {AIRPORT,PROCEDURES} from '../../src/airport.mjs';
 import {performanceProfile,procedureCommandIssues} from '../../src/pilot.mjs';
 import {isAirborne} from '../../src/flight-events.mjs';
 import {simulationStateSha256,STATE_DIGEST_VERSION} from '../../server/research-journal.mjs';
-import {provenance} from '../../server/study-run.mjs';
+import {provenance,parseStudyManifest} from '../../server/study-run.mjs';
 import spec from '../../docs/evaluation-spec.json' with {type:'json'};
-export const ANALYSIS_VERSION='verified-replay-descriptive-v1';
+export const ANALYSIS_VERSION='verified-replay-descriptive-v3';
 export const ratio=(numerator,denominator,scale=1)=>({numerator,denominator,value:denominator>0?scale*numerator/denominator:null,status:denominator>0?'descriptive':'no-denominator'});
 export function applicableRules(f) {
  const c=f.command,n=c?.navigation;if(!n)return [];
@@ -36,7 +36,7 @@ const clone=x=>structuredClone(x);
 export async function analyzeResearch(directory,{onCommand=()=>{}}={}) {
  const manifest=await readExportManifest(directory);
  assert.ok(manifest.entries.length,'An empty journal has no analysis population');
- let sim,initial,sourceFingerprint=null,configurationCount=0,checkpoints=0,runId=null,evidenceClass='unclassified',stopReason=null,studyManifest=null;
+ let sim,initial,sourceFingerprint=null,configurationCount=0,checkpoints=0,runId=null,evidenceClass='unclassified',stopReason=null,studyManifest=null,archiveFirstRecordedAt=null,archiveLastRecordedAt=null,studyArmedRecordedAt=null,studyStoppedRecordedAt=null,studyArmedEventAt=null;
  let attempt=null;const ids=new Set(),flights=new Map(),phaseCounts={},scopeCounts={},totals=group();
  const rules=Object.fromEntries(spec.commandRules.map(r=>[r.id,{id:r.id,basis:r.basis,eligible:0,flagged:0}]));
  const resources={intentBatches:0,outcomeBatches:0,cancelledBeforeSendBatches:0,failedBatches:0,knownInputTokens:0,knownOutputTokens:0,unknownUsageBatches:0,failureCodes:{},returnedModels:{}};
@@ -47,15 +47,17 @@ export async function analyzeResearch(directory,{onCommand=()=>{}}={}) {
   sourceFingerprint=p.sourceFingerprint;assert.equal(sourceFingerprint,provenance.sourceFingerprint,'Replay requires the exact archived source checkout and provenance');
  };
  for await(const entry of verifiedEntries(directory,manifest)) {
-  assert.equal(entry.stateDigestVersion,STATE_DIGEST_VERSION,'Unsupported checkpoint version');
+  assert.equal(entry.stateDigestVersion,STATE_DIGEST_VERSION,'Unsupported checkpoint version');assert.ok(Number.isFinite(entry.recordedAt)&&entry.recordedAt>0,'Invalid journal recordedAt');if(archiveFirstRecordedAt===null)archiveFirstRecordedAt=entry.recordedAt;assert.ok(archiveLastRecordedAt===null||entry.recordedAt>=archiveLastRecordedAt,'Journal wall clock moved backward');archiveLastRecordedAt=entry.recordedAt;
   for(const event of entry.events) {
    if(event.kind==='initial-state') {
     assert.equal(sim,undefined,'Multiple initial states cannot be pooled');source(event.sourceProvenance);
-    sim=clone(event.sim);initial=clone(sim);studyManifest=event.manifest??null;runId=studyManifest?.runId??null;evidenceClass=event.evidenceClass??'unclassified';
+    sim=clone(event.sim);initial=clone(sim);studyManifest=event.manifest??null;if(studyManifest)parseStudyManifest(studyManifest);runId=studyManifest?.runId??null;evidenceClass=event.evidenceClass??'unclassified';
    }
    assert.ok(sim,'Journal must begin with a complete initial state');
    if(event.kind==='configuration'){source(event.sourceProvenance);configurationCount++;}
    if(event.kind==='evidence-class'){assert.equal(event.value,'synthetic-offline');evidenceClass=event.value;}
+   if(event.kind==='study-armed'){assert.ok(studyManifest,'Study arm without frozen manifest');assert.equal(event.runId,studyManifest.runId);assert.equal(studyArmedRecordedAt,null,'Duplicate study arm');assert.ok(Number.isFinite(event.at)&&event.at>0,'Invalid study arm time');studyArmedRecordedAt=entry.recordedAt;studyArmedEventAt=event.at;}
+   if(studyManifest&&['dispatch-intent','application','physics-step'].includes(event.kind))assert.ok(studyArmedRecordedAt!==null,'Evaluated study activity before explicit arm');
    if(event.kind==='dispatch-intent') {
     assert.ok(!attempt||attempt.settled,'Unresolved overlapping dispatch intents');
     assert.ok(Array.isArray(event.requests)&&event.requests.length>0,'Empty dispatch intent');
@@ -117,7 +119,7 @@ export async function analyzeResearch(directory,{onCommand=()=>{}}={}) {
     assert.equal(sim.elapsed,event.to,'Physics duration not reproducible');
     for(const observation of event.events??[])if(observation.kind==='incident')measurements[observation.type]=(measurements[observation.type]??0)+1;
    }
-   if(event.kind==='study-stop')stopReason=event.reason;
+   if(event.kind==='study-stop'){if(studyManifest){assert.ok(studyArmedRecordedAt!==null,'Study stop before explicit arm');assert.equal(studyStoppedRecordedAt,null,'Duplicate study stop');studyStoppedRecordedAt=entry.recordedAt;}stopReason=event.reason;}
   }
   assert.equal(await simulationStateSha256(sim),entry.stateSha256,'Replay checkpoint mismatch at '+entry.sequence);checkpoints++;
  }
@@ -128,8 +130,8 @@ export async function analyzeResearch(directory,{onCommand=()=>{}}={}) {
  const missingOutcomes=resources.intentBatches-resources.outcomeBatches-resources.cancelledBeforeSendBatches;
  assert.ok(missingOutcomes>=0,'Outcome accounting mismatch');resources.unresolvedIntentBatches=missingOutcomes;
  resources.unknownUsageBatches+=missingOutcomes;resources.successLatencyMs={count:latencies.length,p50:percentile(latencies,.5),p95:percentile(latencies,.95),max:latencies.length?Math.max(...latencies):null};
- const exposure=statsDelta.aircraftHours??0;
- const outcomes={window:'Initial exported state to verified final checkpoint; no historical backfill',simulatedSeconds:sim.elapsed-initial.elapsed,airborneAircraftHours:exposure,statsDelta,incidentCounts:measurements,combinedEventsPer100AircraftHours:ratio((statsDelta.collisions??0)+(statsDelta.groundImpacts??0),exposure,100)};
+ const exposure=statsDelta.aircraftHours??0,isStudy=Boolean(studyManifest);if(isStudy)assert.ok(studyArmedRecordedAt!==null,'Frozen study archive has no explicit arm event');if(stopReason&&isStudy)assert.ok(studyStoppedRecordedAt!==null,'Frozen study stop has no journal timestamp');const observedFirst=isStudy?studyArmedRecordedAt:archiveFirstRecordedAt,observedLast=isStudy?(studyStoppedRecordedAt??archiveLastRecordedAt):archiveLastRecordedAt;assert.ok(Number.isFinite(observedFirst)&&Number.isFinite(observedLast)&&observedLast>=observedFirst,'Invalid observed wall-time window');
+ const outcomes={window:isStudy?'Explicit study arm to verified stop/final checkpoint; no pre-arm wall time or historical backfill':'Initial exported state to verified final checkpoint; no historical backfill',simulatedSeconds:sim.elapsed-initial.elapsed,airborneAircraftHours:exposure,statsDelta,incidentCounts:measurements,combinedEventsPer100AircraftHours:ratio((statsDelta.collisions??0)+(statsDelta.groundImpacts??0),exposure,100)};
  const flightRows=[...flights.values()].map(f=>({...f,presentAtPrefixEnd:sim.flights.some(a=>a.id===f.aircraft&&a.generation===f.generation),terminalOutcome:'not-inferred-from-command-association'}));
- return {schemaVersion:1,analysisVersion:ANALYSIS_VERSION,sourceFingerprint,journalHeadSha256:manifest.meta.headSha256,checkpoints,configurationCount,runId,evidenceClass,studyManifest,stopReason,prefixStatus:stopReason?(stopReason==='target-exposure'?'completed':'incomplete'):'open-or-unfrozen-prefix',commands:{...totals,anyFinding:ratio(totals.flagged,totals.commands)},byPhase:phaseCounts,byScope:scopeCounts,byRule:Object.values(rules).map(r=>({...r,fraction:ratio(r.flagged,r.eligible)})),flights:flightRows,outcomes,resources,limitations:['Detector-defined target conflicts, not independently adjudicated aviation errors.','Per-rule denominators are reconstructed from the exact matching code and receipt state.','No confidence-as-safety calibration, causal attribution, independence assumption or comparative superiority.','Known usage excludes uncertain failed/unresolved calls; synthetic replies do not measure billed tokens.','A verified hash chain proves internal integrity, not external authenticity or preregistration.','Flight observation starts at first command; command association alone does not establish terminal causation.']};
+ return {schemaVersion:1,analysisVersion:ANALYSIS_VERSION,sourceFingerprint,journalHeadSha256:manifest.meta.headSha256,checkpoints,configurationCount,runId,evidenceClass,studyManifest,recordedAt:{first:observedFirst,last:observedLast,wallDurationMs:observedLast-observedFirst},archiveRecordedAt:{first:archiveFirstRecordedAt,last:archiveLastRecordedAt,wallDurationMs:archiveLastRecordedAt-archiveFirstRecordedAt},studyArm:{eventAt:studyArmedEventAt,journalRecordedAt:studyArmedRecordedAt},stopReason,prefixStatus:stopReason?(stopReason==='target-exposure'?'completed':'incomplete'):'open-or-unfrozen-prefix',commands:{...totals,anyFinding:ratio(totals.flagged,totals.commands)},byPhase:phaseCounts,byScope:scopeCounts,byRule:Object.values(rules).map(r=>({...r,fraction:ratio(r.flagged,r.eligible)})),flights:flightRows,outcomes,resources,limitations:['Detector-defined target conflicts, not independently adjudicated aviation errors.','Per-rule denominators are reconstructed from the exact matching code and receipt state.','No confidence-as-safety calibration, causal attribution, independence assumption or comparative superiority.','Known usage excludes uncertain failed/unresolved calls; synthetic replies do not measure billed tokens.','A verified hash chain proves internal integrity, not external authenticity or preregistration.','Flight observation starts at first command; command association alone does not establish terminal causation.']};
 }

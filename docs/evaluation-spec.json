@@ -2,7 +2,7 @@
   "protocolId": "vector-observational-v2",
   "status": "development-draft-not-preregistered",
   "schemaVersion": 1,
-  "studyDesign": "Single-arm, budget-limited closed-loop software-system observation; no paid A/B required.",
+  "studyDesign": "Single-arm, prespecified multi-run, budget-limited closed-loop software-system observation; no paid A/B required.",
   "targetScope": "Airborne control only; touchdown and documented departure exit may respawn after outcome measurement.",
   "currentScope": "Airborne-only runtime by default; explicit legacy test fixtures remain separately labeled.",
   "executionPolicy": "jev-command-observe-v1",
@@ -136,5 +136,8 @@
       "url": "https://docs.typesafe.ai/confidence",
       "accessed": "2026-09-17"
     }
-  ]
+  ],
+  "executionStartPolicy": "explicit-operator-arm-v1",
+  "seedPolicy": "sha256-plan-index-v1; all derived seeds included in index order with no outcome filtering.",
+  "runOrdering": "Sequential plan-index order; overlapping/out-of-order evaluated run windows are rejected by cohort aggregation."
 }

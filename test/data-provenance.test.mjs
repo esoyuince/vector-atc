@@ -19,3 +19,7 @@ test('provenance inventory has unique immutable identifiers',()=>{
  assert.equal(new Set(listed.map(s=>s.sha256)).size,listed.length);assert.ok(listed.every(s=>hex.test(s.sha256)&&Number.isSafeInteger(s.bytes)&&s.bytes>0));
  assert.equal(data.id,'LTFM-SOUTH-v1');assert.match(data.retrieved,/^20\d\d-\d\d-\d\d$/);
 });
+test('committed DHMI download receipt proves exact byte/hash availability without claiming content adjudication',()=>{
+ const receipt=JSON.parse(fs.readFileSync(new URL('../docs/source-verification-receipt.json',import.meta.url))),byName=new Map(listed.map(s=>[s.name,s]));assert.equal(receipt.allMatch,true);assert.equal(receipt.contentAdjudication,false);assert.equal(receipt.providerCalls,0);assert.ok(Number.isFinite(Date.parse(receipt.verifiedAt)));assert.equal(receipt.results.length,listed.length);
+ for(const row of receipt.results){const source=byName.get(row.name);assert.ok(source);assert.equal(row.url,source.url);assert.equal(row.expectedBytes,source.bytes);assert.equal(row.actualBytes,source.bytes);assert.equal(row.expectedSha256,source.sha256);assert.equal(row.actualSha256,source.sha256);assert.equal(row.bytesMatch,true);assert.equal(row.sha256Match,true);}
+});

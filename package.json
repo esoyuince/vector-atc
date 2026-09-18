@@ -1,7 +1,7 @@
 {
   "name": "vector-typesafe-atc-demo",
   "private": true,
-  "version": "0.6.3",
+  "version": "0.6.4",
   "type": "module",
   "scripts": {
     "dev": "npm run build && wrangler dev --ip 127.0.0.1 --port 5173",
@@ -18,7 +18,14 @@
     "test:coverage:offline": "node --import ./scripts/offline-guard.mjs --experimental-test-coverage --test-coverage-lines=95 --test-coverage-branches=85 --test-coverage-functions=90 --test test/*.test.mjs",
     "sweep:offline": "node --import ./scripts/offline-guard.mjs scripts/offline-sweep.mjs",
     "preflight:study": "node --import ./scripts/offline-guard.mjs scripts/study-preflight.mjs",
-    "attach:rule-review": "node --import ./scripts/offline-guard.mjs scripts/attach-rule-review.mjs"
+    "attach:rule-review": "node --import ./scripts/offline-guard.mjs scripts/attach-rule-review.mjs",
+    "make:study-plan": "node --import ./scripts/offline-guard.mjs scripts/make-study-plan.mjs",
+    "freeze:study-batch": "node --import ./scripts/offline-guard.mjs scripts/freeze-study-batch.mjs",
+    "preflight:study-batch": "node --import ./scripts/offline-guard.mjs scripts/study-batch-preflight.mjs",
+    "aggregate:study": "node --import ./scripts/offline-guard.mjs scripts/aggregate-study.mjs",
+    "make:rule-review-packet": "node --import ./scripts/offline-guard.mjs scripts/make-rule-review-packet.mjs",
+    "verify:aviation-sources": "node scripts/verify-aviation-sources.mjs",
+    "arm:study": "node scripts/arm-study.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

@@ -3,8 +3,11 @@
   "status": "draft-unfrozen",
   "runId": null,
   "scope": "airborne-handoff-v1",
+  "executionStartPolicy": "explicit-operator-arm-v1",
   "seed": null,
   "sourceFingerprint": null,
+  "sourceCommit": null,
+  "sourceTree": null,
   "versions": {
     "prompt": "jev-atc-airborne-observe-v2",
     "context": "compact-state-geometry-v2",
@@ -23,6 +26,7 @@
   },
   "preregistered": false,
   "independentRuleReview": false,
+  "reviewPacketSha256": null,
   "ruleReviewSha256": null,
   "note": "Generate locally after validation with scripts/freeze-run.mjs. Not an authorized study or deployment."
 }

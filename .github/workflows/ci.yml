@@ -41,6 +41,8 @@ jobs:
       - run: npm run build
       - run: npm run verify:provenance
       - run: git diff --exit-code -- server/build-provenance.mjs
+      - run: npm run make:study-plan -- "$RUNNER_TEMP/ci-study-plan.json" ci-validation 3 60 600 100000 67108864
+      - run: npm run make:rule-review-packet -- "$RUNNER_TEMP/ci-review-packet.json" "$RUNNER_TEMP/ci-review.json"
       - run: npm run check:worker:offline
       - run: npm run soak:offline -- "$RUNNER_TEMP/vector-offline-soak" 300
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

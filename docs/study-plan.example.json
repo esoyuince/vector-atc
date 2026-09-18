@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "status": "draft-unfrozen-plan",
+  "planId": null,
+  "scope": "airborne-handoff-v1",
+  "executionStartPolicy": "explicit-operator-arm-v1",
+  "sourceFingerprint": null,
+  "gitCommit": null,
+  "gitTree": null,
+  "designCommitmentSha256": null,
+  "seedListSha256": null,
+  "runCount": null,
+  "maximumPlannedInputTokenAllowance": null,
+  "seedDerivation": {
+    "scheme": "sha256-plan-index-v1",
+    "encoding": "utf8-null-separated-decimal-index-v1",
+    "selectionPolicy": "all-derived-seeds-no-outcome-filtering",
+    "runOrder": "index-order"
+  },
+  "perRunStorage": {
+    "researchJournalMaxBytes": null
+  },
+  "perRunStopping": {
+    "targetSimulatedSeconds": null,
+    "maxWallSeconds": null,
+    "maxTotalInputTokens": null,
+    "stopForFavorableResults": false
+  },
+  "note": "Generate the actual frozen plan outside the repo with scripts/make-study-plan.mjs after run count and limits are approved."
+}

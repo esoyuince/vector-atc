@@ -319,9 +319,9 @@ test('journal permits exact deterministic command/physics replay without another
 });
 test('frozen controller enforces exposure limit, version identity and records a completed stop',async t=>{
  const {createAirborneSimulation}=await import('../src/simulation.mjs'),{runtimeVersions,initialStateFingerprint,provenance}=await import('../server/study-run.mjs');
- const m={status:'frozen-local',runId:'test-frozen',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds:1,maxWallSeconds:60,maxTotalInputTokens:1000000,stopForFavorableResults:false}};
+ const m={status:'frozen-local',executionStartPolicy:'explicit-operator-arm-v1',runId:'test-frozen',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds:1,maxWallSeconds:60,maxTotalInputTokens:1000000,stopForFavorableResults:false}};
  const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(m),RESEARCH_RUN_ID:m.runId}),c=h.controller;
- await c.heartbeat('viewer',1,true);await c.alarm();h.advance(2000);await c.alarm();assert.equal(c.record.sim.elapsed,1);assert.equal(c.record.ai.mode,'study-stopped');assert.equal(c.record.study.status,'completed');
+ assert.equal(c.record.study.status,'ready');assert.equal(h.calls.length,0);await c.armStudyRun();await c.heartbeat('viewer',1,true);await c.alarm();h.advance(2000);await c.alarm();assert.equal(c.record.sim.elapsed,1);assert.equal(c.record.ai.mode,'study-stopped');assert.equal(c.record.study.status,'completed');
  const calls=h.calls.length;h.advance(2000);await c.alarm();assert.equal(h.calls.length,calls);assert.equal(c.record.study.manifest.sourceFingerprint,provenance.sourceFingerprint);
 });
 
@@ -348,10 +348,10 @@ test('state and replay caches cannot leak a previous study or the legacy demo in
  assert.equal(cache.size,6);
 });
 
-async function frozenFixtureHarness(t,targetSimulatedSeconds=10){
+async function frozenFixtureHarness(t,targetSimulatedSeconds=10,arm=true){
  const {createAirborneSimulation}=await import('../src/simulation.mjs'),{runtimeVersions,initialStateFingerprint,provenance}=await import('../server/study-run.mjs');
- const m={status:'frozen-local',runId:'freeze-edge',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds,maxWallSeconds:60,maxTotalInputTokens:1000000,stopForFavorableResults:false}};
- return harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(m),RESEARCH_RUN_ID:m.runId});
+ const m={status:'frozen-local',executionStartPolicy:'explicit-operator-arm-v1',runId:'freeze-edge',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds,maxWallSeconds:60,maxTotalInputTokens:1000000,stopForFavorableResults:false}};
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(m),RESEARCH_RUN_ID:m.runId});if(arm)await h.controller.armStudyRun();return h;
 }
 test('a frozen study with no active aircraft stops at its exposure target without overshoot',async t=>{
  const h=await frozenFixtureHarness(t,1),c=h.controller;c.record.sim.elapsed=.75;
@@ -392,10 +392,10 @@ test('infrastructure stop remains visible without viewers',async t=>{
 test('frozen run rejects an unexpected returned model without applying commands',async t=>{
  const {createAirborneSimulation}=await import('../src/simulation.mjs');
  const {initialStateFingerprint,runtimeVersions,provenance}=await import('../server/study-run.mjs');
- const m={status:'frozen-local',runId:'model-drift',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds:60,maxWallSeconds:600,maxTotalInputTokens:1000000,stopForFavorableResults:false}};
+ const m={status:'frozen-local',executionStartPolicy:'explicit-operator-arm-v1',runId:'model-drift',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds:60,maxWallSeconds:600,maxTotalInputTokens:1000000,stopForFavorableResults:false}};
  const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(m),RESEARCH_RUN_ID:m.runId}),c=h.controller;
  t.mock.method(globalThis,'fetch',async(_u,opts)=>Response.json({...response(JSON.parse(opts.body)),model:'jev-other-version'}));
- await c.heartbeat('test-viewer',1,true);await c.alarm();assert.equal(c.record.sim.stats.aiApplied,0);
+ await c.armStudyRun();await c.heartbeat('test-viewer',1,true);await c.alarm();assert.equal(c.record.sim.stats.aiApplied,0);
  assert.equal(c.record.study.status,'incomplete');assert.equal(c.record.study.stopReason,'returned-model-mismatch');
 });
 
@@ -416,10 +416,38 @@ test('restart after a persisted intent with unknown outcome cannot send it again
 });
 test('report links independent adjudication only to a frozen manifest review hash',async t=>{
  const {createAirborneSimulation}=await import('../src/simulation.mjs'),{initialStateFingerprint,runtimeVersions,provenance}=await import('../server/study-run.mjs'),hash='a'.repeat(64);
- const m={status:'frozen-local',runId:'review-linked',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds:60,maxWallSeconds:600,maxTotalInputTokens:1000000,stopForFavorableResults:false},independentRuleReview:true,ruleReviewSha256:hash};
+ const m={status:'frozen-local',executionStartPolicy:'explicit-operator-arm-v1',runId:'review-linked',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),stopping:{targetSimulatedSeconds:60,maxWallSeconds:600,maxTotalInputTokens:1000000,stopForFavorableResults:false},independentRuleReview:true,reviewPacketSha256:'b'.repeat(64),ruleReviewSha256:hash};
  const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(m),RESEARCH_RUN_ID:m.runId}),report=await h.controller.report();
- assert.equal(report.evaluation.dataAvailability.independentlyAdjudicatedLabels,true);assert.equal(report.evaluation.dataAvailability.ruleReviewSha256,hash);assert.ok(!report.evaluation.analysisReadiness.blockers.includes('independent-rule-adjudication-pending'));
+ assert.equal(report.evaluation.dataAvailability.independentlyAdjudicatedLabels,true);assert.equal(report.evaluation.dataAvailability.reviewPacketSha256,'b'.repeat(64));assert.equal(report.evaluation.dataAvailability.ruleReviewSha256,hash);assert.ok(!report.evaluation.analysisReadiness.blockers.includes('independent-rule-adjudication-pending'));
 });
 test('AI-disabled snapshot is not advertised as connected even if a local key exists',async t=>{
  const h=await harness(t,new Map(),{AI_ENABLED:'false'}),snapshot=await h.controller.snapshot();assert.equal(snapshot.ai.configured,false);assert.equal(h.calls.length,0);
+});
+test('journal labels evaluated study and ordinary demo evidence classes explicitly',async t=>{
+ const demo=await harness(t,new Map(),{SIM_SCOPE:'airborne-only'}),demoEntries=await journalEntries(demo.controller);assert.equal(demoEntries[0].events.find(e=>e.kind==='initial-state').evidenceClass,'live-demo');
+ const study=await frozenFixtureHarness(t,10),studyEntries=await journalEntries(study.controller);assert.equal(studyEntries[0].events.find(e=>e.kind==='initial-state').evidenceClass,'live-study');
+});
+test('cohort research-journal capacity is frozen while legacy single-run manifests remain compatible',async t=>{
+ const {createAirborneSimulation}=await import('../src/simulation.mjs'),{initialStateFingerprint,runtimeVersions,provenance}=await import('../server/study-run.mjs'),seed=42,sim=createAirborneSimulation(0,seed),studyPlan={planId:'cap-fixture',planSha256:'a'.repeat(64),designCommitmentSha256:'d'.repeat(64),seedListSha256:'e'.repeat(64),startPolicy:'explicit-operator-arm-v1',runIndex:0,runCount:1,seedScheme:'sha256-plan-index-v1'};
+ const manifest={status:'frozen-local',executionStartPolicy:'explicit-operator-arm-v1',runId:'cap-fixture-r001',scope:'airborne-handoff-v1',seed,sourceFingerprint:provenance.sourceFingerprint,sourceCommit:'b'.repeat(40),sourceTree:'c'.repeat(40),versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(sim),stopping:{targetSimulatedSeconds:60,maxWallSeconds:600,maxTotalInputTokens:100000,stopForFavorableResults:false},storage:{researchJournalMaxBytes:67108864},independentRuleReview:false,reviewPacketSha256:null,ruleReviewSha256:null,studyPlan};
+ const ok=await harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(manifest),RESEARCH_RUN_ID:manifest.runId,RESEARCH_JOURNAL_MAX_BYTES:'67108864'});assert.equal(ok.controller.record.study.manifest.storage.researchJournalMaxBytes,67108864);assert.equal(ok.calls.length,0);
+ await assert.rejects(harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(manifest),RESEARCH_RUN_ID:manifest.runId,RESEARCH_JOURNAL_MAX_BYTES:'64000000'}),/Frozen research journal limit mismatch/);
+ const legacy={...manifest,runId:'legacy-cap-fixture',studyPlan:undefined,sourceCommit:undefined,sourceTree:undefined,storage:undefined};const old=await harness(t,new Map(),{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(legacy),RESEARCH_RUN_ID:legacy.runId});assert.equal(old.calls.length,0);
+});
+test('frozen study stays ready indefinitely until explicitly armed; public viewers cannot start it',async t=>{
+ const h=await frozenFixtureHarness(t,10,false),c=h.controller;assert.equal(c.record.study.status,'ready');assert.equal(c.record.study.startedAt,null);assert.equal((await c.snapshot()).studyStatus,'ready');
+ await c.heartbeat('ready-viewer-123456789012',1,true);await c.alarm();assert.equal(h.calls.length,0);assert.equal(c.record.sim.elapsed,0);assert.equal(h.alarm(),null);
+ h.advance(120000);await c.alarm();assert.equal(c.record.study.status,'ready');assert.equal(c.record.sim.elapsed,0);assert.equal(h.calls.length,0);
+});
+test('explicit arm is idempotent, spends no credit itself and running study no longer depends on viewers',async t=>{
+ const h=await frozenFixtureHarness(t,10,false),c=h.controller,first=await c.armStudyRun();assert.equal(first.armed,true);assert.equal(first.status,'running');assert.equal(h.calls.length,0);assert.ok(h.alarm()!=null);
+ const again=await c.armStudyRun();assert.equal(again.armed,false);assert.equal(h.calls.length,0);
+ await c.alarm();assert.ok(h.calls.length>0);assert.ok(c.record.sim.stats.aiApplied>0);assert.equal(c.record.study.status,'running');assert.equal(c.viewers(),0);
+ const armedEvents=(await journalEntries(c)).flatMap(e=>e.events).filter(e=>e.kind==='study-armed');assert.equal(armedEvents.length,1);
+});
+test('study arm HTTP endpoint requires the operator secret and does not expose it',async()=>{
+ let arms=0;const token='study-arm-fixture-token-0123456789abcdef',env={RESEARCH_RUN_ID:'http-arm',RUN_MANIFEST_JSON:'fixture-present',STUDY_ARM_TOKEN:token,AIRPORT:{getByName:name=>({armStudyRun:async()=>{arms++;return {runId:name,status:'running',armed:true};}})}};
+ for(const auth of [null,'Bearer wrong-token-that-is-long-enough-000000']){const headers=auth?{Authorization:auth}:{};const r=await worker.fetch(new Request('https://fixture.invalid/api/study/arm',{method:'POST',headers}),env);assert.equal(r.status,403);assert.equal(arms,0);}
+ const ok=await worker.fetch(new Request('https://fixture.invalid/api/study/arm',{method:'POST',headers:{Authorization:'Bearer '+token}}),env);assert.equal(ok.status,200);const body=await ok.json();assert.equal(body.status,'running');assert.equal(arms,1);assert.ok(!JSON.stringify(body).includes(token));
+ const demo=await worker.fetch(new Request('https://fixture.invalid/api/study/arm',{method:'POST',headers:{Authorization:'Bearer '+token}}),{...env,RESEARCH_RUN_ID:undefined,RUN_MANIFEST_JSON:undefined});assert.equal(demo.status,404);assert.equal(arms,1);
 });

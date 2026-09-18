@@ -25,7 +25,7 @@ test('offline guard blocks external fetch and TCP before network dispatch',()=>{
 });
 test('CI has immutable action pins, read-only permissions, guarded tests and no deploy or secrets',()=>{
  const text=fs.readFileSync(new URL('../.github/workflows/ci.yml',import.meta.url),'utf8');
- assert.match(text,/contents: read/);assert.match(text,/persist-credentials: false/);assert.match(text,/test:offline/);assert.match(text,/test:coverage:offline/);assert.match(text,/sweep:offline/);assert.match(text,/windows-latest/);assert.match(text,/ubuntu-latest/);
+ assert.match(text,/contents: read/);assert.match(text,/persist-credentials: false/);assert.match(text,/test:offline/);assert.match(text,/test:coverage:offline/);assert.match(text,/sweep:offline/);assert.match(text,/make:study-plan/);assert.match(text,/make:rule-review-packet/);assert.match(text,/windows-latest/);assert.match(text,/ubuntu-latest/);
  for(const line of text.split('\n').filter(l=>l.includes('uses:')))assert.match(line,/@[a-f0-9]{40}\s/);
  assert.doesNotMatch(text,/secrets\.|pull_request_target|npm run deploy|wrangler deploy(?!.*dry-run)/);
 });
