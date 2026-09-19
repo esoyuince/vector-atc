@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {AIRPORT} from '../src/airport.mjs';
 import {createAirborneSimulation,makePlan,applyFleetDecision,advanceSimulation} from '../src/simulation.mjs';
 
-test('seeded upstream arrivals are inside the measured sector, with explicit unresolved-separation labels',()=>{
+test('distributed initial arrivals are inside the measured sector, with explicit unresolved-separation labels',()=>{
  for(let seed=1;seed<=100;seed++){
   const sim=createAirborneSimulation(0,seed);
   for(const f of sim.flights.filter(f=>f.phase==='arrival')){

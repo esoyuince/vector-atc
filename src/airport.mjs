@@ -35,7 +35,7 @@ export function routeOptions(f){
  const choices={};
  if(f.mission==='arrival'){
   choices[f.arrival]=routeDescription(PROCEDURES[f.arrival]);
-  const active=PROCEDURES[f.command?.route],hold=f.command?.navigation?.fix;
+  const active=PROCEDURES[f.command?.route??(!f.command?f.initialCondition?.route:null)],hold=f.command?.navigation?.fix;
   const entry=active?.kind==='APP'?active.legs[0]?.fix:['GAZGE','INSTA','ULQAL'].includes(hold)?hold:'GAZGE';
   for(const p of Object.values(PROCEDURES))if((p.kind==='APP'&&p.id.endsWith('_'+entry))||(p.kind==='MISSED'&&p.runway===RUNWAYS[f.lane].id))choices[p.id]=routeDescription(p);
  }else for(const p of Object.values(PROCEDURES))if(p.kind==='SID'&&p.runway===RUNWAYS[f.lane].id)choices[p.id]=routeDescription(p);
@@ -51,14 +51,16 @@ export function navigation(f,route,speed){
  const p=PROCEDURES[route];
  if(p){
   // Rejoining an assigned STAR resumes its last passed fix; no automatic routing choice.
-  const index=p.kind==='STAR'?(f.progress?.[route]||0):0;
-  return {kind:p.kind,points:p.legs.map(l=>FIXES[l.fix].point),index,procedure:route,joining:true,entry:[f.x,f.y]};
+  const initialRoute=!f.command&&f.initialCondition?.route===route;
+  const index=(p.kind==='STAR'||initialRoute)?(f.progress?.[route]||0):0;
+  return {kind:p.kind,points:p.legs.map(l=>FIXES[l.fix].point),index,procedure:route,joining:!initialRoute,entry:[f.x,f.y]};
  }
  const bearing={N:0,NE:45,E:90,SE:135,S:180,SW:225,W:270,NW:315}[route.slice(7)];
  return {kind:'VECTOR',points:[offset([f.x,f.y],bearing,30)],index:0,entry:[f.x,f.y]};
 }
 export function procedureContext(f){
- const n=f.command?.navigation||(f.arrival?navigation(f,f.arrival,f.speed):f.requestedDeparture?navigation(f,f.requestedDeparture,f.speed):null),p=n?.procedure?PROCEDURES[n.procedure]:null;
+ const initialRoute=!f.command?f.initialCondition?.route:null;
+ const n=f.command?.navigation||(initialRoute?navigation(f,initialRoute,f.speed):f.arrival?navigation(f,f.arrival,f.speed):f.requestedDeparture?navigation(f,f.requestedDeparture,f.speed):null),p=n?.procedure?PROCEDURES[n.procedure]:null;
  return {assignedArrival:f.arrival||null,requestedDeparture:f.requestedDeparture||null,active:p?.id||f.command?.route||null,nextLeg:p?.legs[n.index]||null,remainingLegs:p?.legs.slice(n.index,n.index+4)||[],distanceToNextNm:n?Math.round(distance([f.x,f.y],n.points[Math.min(n.index,n.points.length-1)])*10)/10:null};
 }
 export const DATASET_INFO={id:data.id,retrieved:data.retrieved,sources:data.sources,scope:'South flow: 5 physical runways, 3 active; 2 STARs, 6 SIDs, 9 ILS Z transitions, 3 missed approaches, 6 holding fixes. Selected published procedures, not a complete/current operational database.',assumptions:'Local NM projection; standard atmosphere FL=hundreds of feet; no wind/terrain/wake turbulence; generic transport-jet point-mass physics, not AFM performance; no ARINC turn anticipation; FAA-style 60/90-second holding timing and entry sectors, bank limited to 25 degrees, no wind correction; not a complete LTFM operational holding implementation; point-aircraft separation thresholds are experimental, including parallel approaches.'};

@@ -46,7 +46,7 @@ Cloudflare Workers serves static assets. A Durable Object coordinates the experi
 
 ## Current implementation (0.6.7)
 
-The default Worker is airborne-only. The pool still has 50 arrival and 50 departure identities, not 100 simultaneously airborne aircraft. Departures join at their first SID fix every 60 simulated seconds; the initial frame contains 50 arrivals plus one departure (204 flight-control questions). Pending identities are not sent to Jev. Initial conditions and scheduled releases are scenario inputs, not credited to Jev. Legacy mixed-scope constructors remain for explicitly labeled regression fixtures.
+New simulations use the synthetic distributed-flow-v1 scenario: 100 identities, initially 18 STAR arrivals, 6 approach flights and 12 SID departures; 64 identities are pending. Initial route progress, approach permissions and phase-dependent speed/altitude profiles are scenario inputs, never Jev commands. Subsequent arrivals use seeded 75–150 s demand gaps and departures 90–165 s; occupied entries defer admission without moving existing traffic. Profiles interpolate between source constraints instead of inventing targets at unconstrained arrival fixes. This is not measured or statistically calibrated LTFM demand. Existing stored scenarios are not redistributed. See [distributed traffic](docs/distributed-traffic-candidate.md).
 
 Terminal outcomes use swept substep geometry. All participants are measured before completion/respawn; a level overflight above a runway is not touchdown. See [the simulation policy](docs/simulation-policy-v2.md) for surface, sink-rate and exit assumptions. These are research-model rules, not operational aviation standards.
 

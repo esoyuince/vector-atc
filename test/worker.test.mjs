@@ -281,17 +281,17 @@ test('evaluation export and request fingerprints persist without extra inference
 
 async function journalEntries(c){const meta=await c.researchData(),entries=[];for(let i=0;i<meta.nextSequence;i++){const d=await c.researchData(i);let text='';for(let j=0;j<d.chunkCount;j++)text+=(await c.researchData(i,j)).text;entries.push(JSON.parse(text));}return entries;}
 test('airborne controller never asks pending ground identities and archives every applied command',async t=>{
- const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only'}),c=h.controller;await c.heartbeat('viewer',1,true);await c.alarm();
- assert.equal(c.record.sim.trafficScope,'airborne-handoff-v1');assert.equal(c.record.ai.last.aircraft,51);assert.equal(c.record.ai.last.questions,204);assert.equal(c.record.ai.last.applied,51);
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only'}),c=h.controller;const initialPlan=makePlan(c.record.sim),expectedQuestions=initialPlan.flights.length*4+initialPlan.runways.length;await c.heartbeat('viewer',1,true);await c.alarm();
+ assert.equal(c.record.sim.trafficScope,'airborne-handoff-v1');assert.equal(c.record.ai.last.aircraft,36);assert.equal(c.record.ai.last.questions,expectedQuestions);assert.equal(c.record.ai.last.applied,36);
  const ground=new Set(c.record.sim.flights.filter(f=>f.phase==='pending').map(f=>f.id));for(const r of h.calls)for(const id of Object.keys(r.questions))assert.ok(!ground.has(id.split('_')[0]));
  const entries=await journalEntries(c),commands=entries.flatMap(e=>e.events.filter(e=>e.kind==='application').flatMap(e=>e.events.filter(e=>e.kind==='command-applied')));
- assert.equal(commands.length,51);assert.equal(new Set(commands.map(e=>e.command.id)).size,51);
+ assert.equal(commands.length,36);assert.equal(new Set(commands.map(e=>e.command.id)).size,36);
  assert.equal((await c.report()).evaluation.byScope.ground.checkedCommands,0);assert.equal((await c.report()).evaluation.dataAvailability.fullDecisionJournal,true);
  const before=await c.researchData(),calls=h.calls.length;await c.report();await c.researchData(0,0);assert.deepEqual(await c.researchData(),before);assert.equal(h.calls.length,calls);
 });
 test('oversized input is visible, does not spend credits and does not retry the same frozen state',async t=>{
  const h=await harness(t),c=h.controller,{FIXES}=await import('../src/airport.mjs'),[x,y]=FIXES.GAZGE.point;
- for(const [i,f] of c.record.sim.flights.slice(50).entries())Object.assign(f,{x:x+i*.001,y,altitude:6000});
+ for(const [i,f] of c.record.sim.flights.slice(50).entries())Object.assign(f,{phase:'arrival',command:null,x:x+i*.001,y,altitude:6000});
  await c.heartbeat('viewer',1,true);await c.alarm();assert.equal(c.record.ai.mode,'input-too-large');assert.equal(c.record.ai.planningFailures,1);assert.equal(h.calls.length,0);
  h.advance(5000);await c.alarm();assert.equal(c.record.ai.planningFailures,1);assert.equal(h.alarm(),null);assert.equal(h.calls.length,0);
 });
@@ -365,7 +365,7 @@ test('wall deadline is finalized on the next wake even when every viewer has lef
 });
 test('oversized study input is an archived infrastructure stop, not an unexplained pause',async t=>{
  const h=await frozenFixtureHarness(t),c=h.controller,{FIXES}=await import('../src/airport.mjs'),[x,y]=FIXES.GAZGE.point;
- for(const [i,f] of c.record.sim.flights.slice(50).entries())Object.assign(f,{x:x+i*.001,y,altitude:6000});
+ for(const [i,f] of c.record.sim.flights.slice(50).entries())Object.assign(f,{phase:'arrival',command:null,x:x+i*.001,y,altitude:6000});
  await c.heartbeat('viewer',1,true);await c.alarm();
  assert.equal(c.record.study.status,'incomplete');assert.equal(c.record.study.stopReason,'input-too-large');assert.equal(h.calls.length,0);
  const entries=await journalEntries(c);assert.ok(entries.flatMap(e=>e.events).some(e=>e.kind==='study-stop'&&e.reason==='input-too-large'));
@@ -402,8 +402,8 @@ test('frozen run rejects an unexpected returned model without applying commands'
 test('simultaneous alarm delivery and duplicate delivery do not duplicate a dispatch or application',async t=>{
  const h=await harness(t,new Map(),{SIM_SCOPE:'airborne-only'}),c=h.controller;
  await c.heartbeat('duplicate-test-viewer',1,true);await Promise.all([c.alarm(),c.alarm(),c.alarm()]);
- assert.equal(c.record.ai.frames,1);assert.equal(c.record.ai.last.applied,51);const calls=h.calls.length;
- await c.alarm();assert.equal(h.calls.length,calls);assert.equal(c.record.sim.stats.aiApplied,51);
+ assert.equal(c.record.ai.frames,1);assert.equal(c.record.ai.last.applied,36);const calls=h.calls.length;
+ await c.alarm();assert.equal(h.calls.length,calls);assert.equal(c.record.sim.stats.aiApplied,36);
  const events=(await journalEntries(c)).flatMap(e=>e.events);assert.equal(events.filter(e=>e.kind==='dispatch-intent').length,1);
 });
 test('restart after a persisted intent with unknown outcome cannot send it again',async t=>{

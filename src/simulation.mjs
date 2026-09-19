@@ -1,4 +1,5 @@
 import {emitObservation} from './observation-events.mjs';
+import {DISTRIBUTED_TRAFFIC,initializeDistributedTraffic,queueDistributedTraffic} from './traffic-scenario.mjs';
 import {AIRBORNE_SCOPE,TRAFFIC_POLICY,enableAirborneScope,queueDeparture,releaseDepartures,placeArrivalAtGate,upcomingHandoffs} from './traffic-lifecycle.mjs';
 import {MEASUREMENT_POLICY,SURFACE_MODEL,EXIT_POLICY,isAirborne,collisionParticipant,motionSnapshot,encounter,surfaceContact,exitCandidate} from './flight-events.mjs';
 import {pilotStep,advancePilotNavigation,trueAirspeed,PILOT_MODEL,PILOT_CONTROL_POLICY,holdingSpeedLimit,performanceProfile} from './pilot.mjs';
@@ -37,7 +38,7 @@ function spawn(sim,f,initial=false,completed=false){
   }
   f.heading=headingTo(f,entry);f.speed=250;f.targetAltitude=f.altitude;
  }
- if(sim.trafficScope===AIRBORNE_SCOPE){if(f.mission==='departure')queueDeparture(sim,f);else placeArrivalAtGate(sim,f,random);}
+ if(sim.trafficScope===AIRBORNE_SCOPE){if(sim.trafficScenario?.id===DISTRIBUTED_TRAFFIC.id)queueDistributedTraffic(sim,f);else if(f.mission==='departure')queueDeparture(sim,f);else placeArrivalAtGate(sim,f,random);}
  f.groundSpeed=trueAirspeed(f.speed,f.altitude);f.trueAirspeed=f.groundSpeed;
  f.note=f.mission==='arrival'?'Rastgele giriş · iniş talebi':'Kalkış talebi · rastgele çıkış noktası';
  if(!initial){if(completed){f.cycles++;sim.stats.cycles++;}sim.stats.respawns++;addEvent(sim,f.id+' yeniden doğdu · '+PHASES[f.phase]);}
@@ -56,8 +57,7 @@ sim.measurementEpoch={policy:MEASUREMENT_POLICY,startedAt:now,elapsed:0,baseline
 }
 export function createAirborneSimulation(now=Date.now(),seed=123456789){
  const sim=createSimulation(now,seed);enableAirborneScope(sim,now);
- for(const f of sim.flights)if(f.mission==='arrival')placeArrivalAtGate(sim,f,random);
- releaseDepartures(sim);return sim;
+ initializeDistributedTraffic(sim);return sim;
 }
 export function telemetry(f){return {id:f.id,type:f.type,performance:performanceProfile(f.type),generation:f.generation,mission:f.mission,phase:f.phase,positionNm:[round(f.x),round(f.y)],positionLatLon:unproject(f.x,f.y),headingTrueDeg:round(f.heading),headingDeg:round(f.heading),altitudeFt:Math.round(f.altitude),speedKt:round(f.speed),airspeedKind:'IAS',trueAirspeedKt:round(f.trueAirspeed||f.speed),groundSpeedKt:round(f.groundSpeed||f.speed),bankDeg:round(f.bank||0),pilot:f.pilot||null,verticalRateFpm:Math.round(f.verticalRate),flightPathAngleDeg:round(Math.atan2(f.verticalRate,(f.groundSpeed||f.speed)*6076/60)/rad),waitSeconds:Math.floor(f.wait),runway:RUNWAYS[f.lane].id,procedure:procedureContext(f),command:f.command?{route:f.command.route,altitudeFt:f.command.altitude,speedKt:f.command.speed,verticalRateFpm:f.command.rate}:null};}
 export function predictedConflicts(flights,horizon=120){

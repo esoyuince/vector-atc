@@ -14,9 +14,9 @@ Status: implemented locally; synthetic tests, not a completed Jev study or deplo
 - Touchdown: contact with assigned strip, heading error <15 degrees, IAS <=190 kt, contact sink no more than 900 fpm. A wrong-strip or excessive-sink contact is an impact. No automatic flare/glideslope rescue.
 - Departure handoff: completed SID or sector boundary, radius >=30 NM, outward heading, and no predicted pair conflict in the next 120 s. Delay only the removal when an exit conflict is pending; do not invent a maneuver.
 - Successful exits are not credited when a terminal collision occurs in the same substep.
-- Initial arrivals use seeded upstream scatter around the first STAR fix, conditioned on staying at least 0.5 NM inside the 110 NM scenario boundary (seeded-gates-v2). Up to 200 proposals are tried. Boundary rejections, unresolved separation and any fallback to the sourced entry fix are explicitly recorded. This is scenario admission, not a correction to Jev commands.
-- Departures are scenario-injected at the first SID fix, 180 kt, altitude max(first-leg minimum, threshold elevation +1500 ft), every 60 simulated seconds globally. This is not simulated ground control or a claim of real runway capacity.
-- Initial pool: 50 arrivals, 50 departure identities; one departure is initially released, 49 are pending. Additional departure decisions appear only after release.
+- Legacy seeded-gates-v2 arrivals use seeded upstream scatter around the first STAR fix, conditioned on staying at least 0.5 NM inside the 110 NM scenario boundary (seeded-gates-v2). Up to 200 proposals are tried. Boundary rejections, unresolved separation and any fallback to the sourced entry fix are explicitly recorded. This is scenario admission, not a correction to Jev commands.
+- Legacy departures are scenario-injected at the first SID fix, 180 kt, altitude max(first-leg minimum, threshold elevation +1500 ft), every 60 simulated seconds globally. This is not simulated ground control or a claim of real runway capacity.
+- Legacy initial pool: 50 arrivals, 50 departure identities; one departure is initially released, 49 are pending. Additional departure decisions appear only after release.
 - New handoffs pause global simulated time until a fresh Jev frame. Provider latency still does not advance aircraft: this is not a hard real-time ATC test.
 - Aircraft performance estimates remain generic, no wind/wake/terrain. Extra guidance values are estimates, never synthesized clearances.
 
@@ -38,3 +38,7 @@ A changed source fingerprint/seed/model/manifest cannot silently resume a frozen
 
 ## Remaining external acceptance
 Independent review of detector interpretations and the declared model assumptions; operator approval of scenario/stop defaults; production smoke and natural real-provider acceptance. No comparative superiority, real-world safety certification, confidence calibration or causal error attribution is established by these tests.
+
+## New distributed scenarios
+
+New initialization follows [distributed-flow-v1](distributed-traffic-candidate.md): 36 active / 64 pending identities with source-route warm starts and seeded staggered arrivals/departures. Initial vertical profiles respect their anchor bounds and do not descend below the FAP level before that fix. This is a synthetic initialization constraint, never an in-flight repair. Stored legacy scenarios are not redistributed; a new source/traffic identity requires a newly frozen run.

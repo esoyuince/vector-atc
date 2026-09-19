@@ -17,8 +17,8 @@ const assumptionDescriptions={
  'surface-model':'0 ft MSL background plus flat 60 m runway strips at sourced threshold elevations; no terrain/obstacle mesh.',
  'touchdown-criteria':'Assigned strip contact, heading error <15 deg, IAS <=190 kt, sink >=-900 fpm; otherwise impact under the simulator model.',
  'departure-handoff':'Departure completion requires procedure/sector exit, >=30 NM, outward heading and no predicted pair conflict in the next 120 s.',
- 'arrival-injection':'Seeded upstream scatter around assigned STAR first fix; unresolved initial separation blocks a frozen batch.',
- 'departure-injection':'Scenario-injected at first SID fix, 180 kt and max(first-leg minimum, runway elevation +1500 ft), not ground control.',
+ 'arrival-injection':'Synthetic warm starts across STAR/approach segments; seeded 75–150 s arrival demand; delayed occupied-entry admission; no measured airport traffic distribution claimed.',
+ 'departure-injection':'Synthetic SID warm starts plus first-fix entries with seeded 90–165 s demand gaps and admission deferrals; not ground control or measured airport capacity.',
  'holding-entry-and-timing':'Deterministic entry sectors and 60/90 s timing with bank-limited generic pilot behavior; not complete local holding implementation.',
  'separation-thresholds':'Experimental point-aircraft thresholds: 3 NM/1000 ft separation, 1 NM/500 ft critical, 0.12 NM/150 ft collision.',
  'generic-aircraft-performance':'Generic transport-jet acceleration/bank/vertical-rate envelopes; not AFM-certified aircraft performance.'

@@ -14,7 +14,7 @@
     "control": "jev-command-observe-v1",
     "measurement": "swept-terminal-v2",
     "evaluation": "vector-observational-v3",
-    "traffic": "seeded-gates-v2"
+    "traffic": "distributed-flow-v1"
   },
   "requestedModel": "jev-1.13.0",
   "initialStateSha256": null,
