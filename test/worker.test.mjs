@@ -466,3 +466,31 @@ for(const previousDataset of ['LTFM-SOUTH-v1','LTFM-SOUTH-v2'])test('dataset '+p
  const archived=h.stored.get('before-dataset-LTFM-SOUTH-v3');assert.equal(archived.dataset,previousDataset);assert.deepEqual(archived.evaluation,beforeEval);assert.deepEqual(archived.stats,before.sim.stats);assert.equal(archived.elapsed,123);
  const report=await next.report();assert.equal(report.dataset.id,'LTFM-SOUTH-v3');assert.equal(report.dataEpochStats.collisions,0);
 });
+
+async function collectionFixture(t,stored){
+ const {createAirborneSimulation}=await import('../src/simulation.mjs'),{initialStateFingerprint,runtimeVersions,provenance}=await import('../server/study-run.mjs');
+ const m={status:'frozen-local',executionStartPolicy:'explicit-operator-arm-v1',runId:'uncapped-fixture',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),evidenceClass:'live-unreviewed-collection',independentRuleReview:false,preregistered:false,stopping:{targetSimulatedSeconds:7200,maxWallSeconds:null,maxTotalInputTokens:null,tokenBudgetPolicy:'provider-balance-v1',stopForFavorableResults:false}};
+ return harness(t,stored??new Map(),{SIM_SCOPE:'airborne-only',RESEARCH_RUN_ID:m.runId,RUN_MANIFEST_JSON:JSON.stringify(m),AI_DAILY_TOKEN_LIMIT:'provider-balance'});
+}
+test('uncapped collection remains ready until arm and records true policy without viewers',async t=>{
+ const h=await collectionFixture(t),c=h.controller;await c.alarm();assert.equal(h.calls.length,0);assert.equal(c.record.study.status,'ready');
+ const initial=(await journalEntries(c))[0].events.find(e=>e.kind==='initial-state');assert.equal(initial.evidenceClass,'live-unreviewed-collection');
+ await c.armStudyRun();c.record.study.accountedInputTokens=1000000000;c.record.budget={...c.record.budget,day:new Date(Date.now()).toISOString().slice(0,10),tokens:1000000000};await c.alarm();assert.ok(h.calls.length>0);assert.equal(c.viewers(),0);
+ h.advance(2000);await c.alarm();assert.ok(c.record.sim.elapsed>0);const s=await c.snapshot();assert.equal(s.ai.budget.limit,null);assert.equal(s.collection.tokenBudgetPolicy,'provider-balance-v1');
+ const reload=await collectionFixture(t,h.stored);assert.equal(reload.controller.record.study.status,'running');assert.equal(reload.calls.length,0);assert.equal(reload.controller.record.sim.elapsed,c.record.sim.elapsed);
+});
+test('payment refusal stops collection once, never retries or resets credits',async t=>{
+ const h=await collectionFixture(t),c=h.controller;let calls=0;t.mock.method(globalThis,'fetch',async()=>{calls++;return new Response('private',{status:402});});
+ await c.armStudyRun();await c.alarm();assert.equal(c.record.study.stopReason,'provider-payment-required');assert.equal(c.record.study.status,'incomplete');assert.equal(c.record.ai.frames,0);
+ const before=calls;h.advance(86400000);await c.alarm();assert.equal(calls,before);assert.equal(h.alarm(),null);assert.equal(c.record.sim.elapsed,0);
+});
+test('collection waits on transient overload and resumes the unchanged state',async t=>{
+ const h=await collectionFixture(t),c=h.controller;let overload=true;t.mock.method(globalThis,'fetch',async(_url,opts)=>overload?new Response('',{status:529}):Response.json(response(JSON.parse(opts.body))));
+ await c.armStudyRun();await c.alarm();assert.equal(c.record.ai.mode,'backoff');assert.equal(c.record.study.status,'running');assert.equal(c.record.sim.elapsed,0);assert.equal(c.record.ai.frames,0);
+ overload=false;h.advance(61000);await c.alarm();assert.equal(c.record.ai.mode,'active');assert.equal(c.record.ai.frames,1);assert.equal(c.record.sim.elapsed,0);
+});
+test('collection overload retries are bounded and never apply a failed frame',async t=>{
+ const h=await collectionFixture(t),c=h.controller;t.mock.method(globalThis,'fetch',async()=>new Response('',{status:429}));
+ await c.armStudyRun();for(let attempt=0;attempt<7;attempt++){await c.alarm();h.advance(601000);}
+ assert.equal(c.record.study.status,'incomplete');assert.equal(c.record.study.stopReason,'provider-or-contract-failure');assert.equal(c.record.ai.frames,0);assert.equal(c.record.sim.elapsed,0);assert.equal(h.alarm(),null);
+});

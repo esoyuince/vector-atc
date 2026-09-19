@@ -65,7 +65,7 @@ export async function callTypeSafe(request,apiKey,{fetchImpl=fetch,signal}={}) {
  }
  if(!response.ok) {
   await response.body?.cancel().catch(()=>{});
-  const code=response.status===429?'provider-rate-limit':response.status===529?'provider-overloaded':'provider-http-failure';
+  const code=response.status===402?'provider-payment-required':response.status===429?'provider-rate-limit':response.status===529?'provider-overloaded':'provider-http-failure';
   throw new ProviderError(code,'TypeSafe kullan\u0131m hatas\u0131.',response.status);
  }
  if(!response.body)throw new ProviderError('provider-empty-response','TypeSafe response had no body.');

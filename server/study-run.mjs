@@ -5,6 +5,7 @@ import {PILOT_CONTROL_POLICY} from '../src/pilot.mjs';
 import {MEASUREMENT_POLICY} from '../src/flight-events.mjs';
 import {AIRBORNE_SCOPE,TRAFFIC_POLICY} from '../src/traffic-lifecycle.mjs';
 import {EVALUATION_PROTOCOL} from '../src/evaluation.mjs';
+export const usesProviderBalance=m=>m?.stopping?.tokenBudgetPolicy==='provider-balance-v1';
 export const STUDY_START_POLICY='explicit-operator-arm-v1';
 export const runtimeVersions=()=>({prompt:TYPESAFE_PROMPT_VERSION,context:TYPESAFE_CONTEXT_VERSION,control:PILOT_CONTROL_POLICY,measurement:MEASUREMENT_POLICY,evaluation:EVALUATION_PROTOCOL,traffic:TRAFFIC_POLICY.id});
 export const initialStateFingerprint=sim=>sha256(JSON.stringify({seed:sim.initialSeed,flights:sim.flights,runways:sim.runways}));
@@ -15,7 +16,10 @@ export function parseStudyManifest(text){
  if(!Number.isSafeInteger(m.seed)||m.seed<0||m.seed>0xffffffff)throw Error('Invalid frozen seed');
  if(m.sourceFingerprint!==provenance.sourceFingerprint||(!m.versions||Object.keys(m.versions).length!==Object.keys(runtimeVersions()).length||Object.entries(runtimeVersions()).some(([k,v])=>m.versions[k]!==v)))throw Error('Frozen source or versions mismatch');
  if(!/^[a-f0-9]{64}$/.test(m.initialStateSha256)||typeof m.requestedModel!=='string'||m.requestedModel.length>80)throw Error('Invalid frozen provenance');
- for(const k of ['targetSimulatedSeconds','maxWallSeconds','maxTotalInputTokens'])if(!Number.isSafeInteger(m.stopping?.[k])||m.stopping[k]<=0)throw Error('Invalid stop rule '+k);
+ const providerBalance=usesProviderBalance(m);
+ if(m.stopping?.tokenBudgetPolicy!==undefined&&!providerBalance)throw Error('Invalid token budget policy');
+ if(providerBalance&&(m.stopping.maxTotalInputTokens!==null||m.stopping.maxWallSeconds!==null||m.evidenceClass!=='live-unreviewed-collection'||m.independentRuleReview!==false||m.preregistered!==false||m.studyPlan))throw Error('Invalid provider-balance collection');
+ for(const k of (providerBalance?['targetSimulatedSeconds']:['targetSimulatedSeconds','maxWallSeconds','maxTotalInputTokens']))if(!Number.isSafeInteger(m.stopping?.[k])||m.stopping[k]<=0)throw Error('Invalid stop rule '+k);
  if(m.stopping.stopForFavorableResults!==false)throw Error('Outcome-dependent stop forbidden');
  const review=m.independentRuleReview??false,reviewHash=m.ruleReviewSha256??null,packetHash=m.reviewPacketSha256??null;
  if(typeof review!=='boolean'||(review?!(typeof reviewHash==='string'&&/^[a-f0-9]{64}$/.test(reviewHash)&&typeof packetHash==='string'&&/^[a-f0-9]{64}$/.test(packetHash)):(reviewHash!==null||packetHash!==null)))throw Error('Invalid independent rule review provenance');
@@ -39,8 +43,8 @@ export function armStudy(record,now){
 export function studyStopReason(record,now,reserve=0){
  const s=record.study;if(!s||s.status==='ready')return null;if(s.status!=='running')return s.stopReason??'already-stopped';
  if(record.sim.elapsed-s.startSimSeconds>=s.manifest.stopping.targetSimulatedSeconds)return 'target-exposure';
- if(now-s.startedAt>=s.manifest.stopping.maxWallSeconds*1000)return 'wall-time';
- if(s.accountedInputTokens+reserve>s.manifest.stopping.maxTotalInputTokens)return 'input-budget';return null;
+ if(s.manifest.stopping.maxWallSeconds!==null&&now-s.startedAt>=s.manifest.stopping.maxWallSeconds*1000)return 'wall-time';
+ if(!usesProviderBalance(s.manifest)&&s.accountedInputTokens+reserve>s.manifest.stopping.maxTotalInputTokens)return 'input-budget';return null;
 }
 export function stopStudy(record,reason,now=Date.now()){
  if(record.study){record.study.status=reason==='target-exposure'?'completed':'incomplete';record.study.stopReason=reason;record.study.stoppedAt=now;}

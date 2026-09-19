@@ -44,7 +44,7 @@ Optional HTTP checks: `node test/http-smoke.mjs http://127.0.0.1:5173`. This che
 
 Cloudflare Workers serves static assets. A Durable Object coordinates the experiment, viewer presence, token reservations and replay. Rate-limiter bindings need distinct namespace IDs within your account. Hosting and TypeSafe charges belong to the deployer's accounts; token limits are not an account-wide monetary cap. There is no automatic deployment workflow in this repository.
 
-## Current implementation (0.6.6)
+## Current implementation (0.6.7)
 
 The default Worker is airborne-only. The pool still has 50 arrival and 50 departure identities, not 100 simultaneously airborne aircraft. Departures join at their first SID fix every 60 simulated seconds; the initial frame contains 50 arrivals plus one departure (204 flight-control questions). Pending identities are not sent to Jev. Initial conditions and scheduled releases are scenario inputs, not credited to Jev. Legacy mixed-scope constructors remain for explicitly labeled regression fixtures.
 
@@ -125,3 +125,7 @@ Original project code is [MIT licensed](LICENSE), © 2026 Ender Soyuince. Depend
 ## Offline validation and analysis
 
 See [offline validation](docs/offline-validation.md). Run `npm run test:offline`, `npm run verify:provenance`, and `npm run check:worker:offline` without a provider key. `npm run soak:offline -- NEW_DIRECTORY 3600` exercises a one-hour simulated fixture with transactional disk storage and complete replay. `node scripts/analyze-research.mjs EXPORT_DIRECTORY NEW_DIRECTORY` verifies a matching-source export and creates command, rule, flight, outcome and resource tables. Synthetic usage is never reported as measured model performance. The CI workflow is validation-only, not automatic deployment.
+
+## Explicit provider-balance collection
+
+See [unreviewed live collection](docs/provider-balance-collection.md) for the optional token-uncapped, operator-armed run. This is separate from an independently reviewed paper cohort.

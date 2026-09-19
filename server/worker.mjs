@@ -1,4 +1,4 @@
-import {parseStudyManifest,initializeStudy,armStudy,studyStopReason,stopStudy,runtimeVersions,provenance} from './study-run.mjs';
+import {parseStudyManifest,initializeStudy,armStudy,studyStopReason,stopStudy,runtimeVersions,provenance,usesProviderBalance} from './study-run.mjs';
 import {MEASUREMENT_POLICY} from '../src/flight-events.mjs';
 import {ResearchJournal,ArchiveError} from './research-journal.mjs';
 import {collectObservations} from '../src/observation-events.mjs';
@@ -8,7 +8,7 @@ import {DurableObject} from 'cloudflare:workers';
 import {ReplayArchive} from './replay-archive.mjs';
 import {createAirborneSimulation,createSimulation,advanceSimulation,makePlan,applyFleetDecision,publicSimulation,experimentReport,CONTROL_SECONDS,addEvent} from '../src/simulation.mjs';
 import {buildRequest,callTypeSafe,batchPlans,TYPESAFE_PROMPT_VERSION,TYPESAFE_CONTEXT_VERSION} from './typesafe.mjs';
-import {DEFAULT_LIMITS,budgetAt,reserveBudget,settleBudget} from './budget.mjs';
+import {DEFAULT_LIMITS,budgetAt,reserveBudget,settleBudget,dailyTokenLimit} from './budget.mjs';
 import {PILOT_CONTROL_POLICY} from '../src/pilot.mjs';
 import {DATASET_INFO} from '../src/airport.mjs';
 import {initializeCommandAudit} from '../src/command-audit.mjs';
@@ -60,7 +60,7 @@ export class AirportSimulation extends DurableObject{
    if(this.record.study){const limits=this.limits(),oldLimits=this.record.study.runtimeLimits;if(oldLimits&&JSON.stringify(oldLimits)!==JSON.stringify(limits))throw new Error('Frozen runtime limits changed');this.record.study.runtimeLimits=limits;}
 
    this.journal=await ResearchJournal.open(ctx.storage,journalMaxBytes);
-   if(this.journal.meta.nextSequence===0)await this.persist(this.record,[{kind:'initial-state',sim:structuredClone(this.record.sim),versions:{prompt:TYPESAFE_PROMPT_VERSION,context:TYPESAFE_CONTEXT_VERSION,control:PILOT_CONTROL_POLICY,evaluation:EVALUATION_PROTOCOL},manifest:this.record.study?.manifest??null,evidenceClass:this.record.study?'live-study':'live-demo',sourceProvenance:provenance,historicalBackfill:false}]);
+   if(this.journal.meta.nextSequence===0)await this.persist(this.record,[{kind:'initial-state',sim:structuredClone(this.record.sim),versions:{prompt:TYPESAFE_PROMPT_VERSION,context:TYPESAFE_CONTEXT_VERSION,control:PILOT_CONTROL_POLICY,evaluation:EVALUATION_PROTOCOL},manifest:this.record.study?.manifest??null,evidenceClass:this.record.study?(this.record.study.manifest.evidenceClass??'live-study'):'live-demo',sourceProvenance:provenance,historicalBackfill:false}]);
    if(this.record.activeSourceFingerprint!==provenance.sourceFingerprint){const tagged=structuredClone(this.record);tagged.activeSourceFingerprint=provenance.sourceFingerprint;await this.persist(tagged,[{kind:'configuration',sourceProvenance:provenance,versions:runtimeVersions(),trafficScope:tagged.sim.trafficScope??'legacy-mixed-v1'}]);}
    if(this.record.ai.mode==='evaluating'){
     const interrupted=structuredClone(this.record);interrupted.ai.mode='archive-error';interrupted.ai.stopReason='interrupted-dispatch-outcome-unknown';interrupted.frameRemaining=0;if(interrupted.study){interrupted.study.status='incomplete';interrupted.study.stopReason=interrupted.ai.stopReason;}
@@ -71,7 +71,7 @@ export class AirportSimulation extends DurableObject{
    this.replay=await ReplayArchive.open(ctx.storage,this.record.sim.flights.map(f=>f.id));
   });
  }
- limits(){return {...DEFAULT_LIMITS,dailyTokens:safeInt(this.env.AI_DAILY_TOKEN_LIMIT,DEFAULT_LIMITS.dailyTokens,10000,100000000),hourlyRequests:safeInt(this.env.AI_HOURLY_REQUEST_LIMIT,720,1,720),intervalMs:safeInt(this.env.AI_INTERVAL_SECONDS,60,60,3600)*1000};}
+ limits(){return {...DEFAULT_LIMITS,dailyTokens:dailyTokenLimit(this.env.AI_DAILY_TOKEN_LIMIT,usesProviderBalance(this.record?.study?.manifest)),hourlyRequests:safeInt(this.env.AI_HOURLY_REQUEST_LIMIT,720,1,720),intervalMs:safeInt(this.env.AI_INTERVAL_SECONDS,60,60,3600)*1000};}
  viewers(now=Date.now()){return [...this.presence.values()].filter(p=>p.active&&p.expires>now).length;}
  studyRunning(){return this.record.study?.status==='running';}
  async heartbeat(id,sequence,active){
@@ -103,7 +103,7 @@ export class AirportSimulation extends DurableObject{
  }
  async snapshot(){
   const {sim,ai,budget}=this.record,viewers=this.viewers(),studyStatus=this.record.study?.status??null,studyRunning=studyStatus==='running',showMode=Boolean(viewers||studyRunning||['archive-error','input-too-large','study-stopped'].includes(ai.mode));
-  return {experimentId:this.record.startedAt,...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:1,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:this.record.study?studyRunning:Boolean(viewers&&ai.mode==='active'&&this.record.frameRemaining>0),studyStatus,ai:{...ai,mode:showMode?ai.mode:'idle',configured:Boolean(this.env.TYPESAFE_API_KEY)&&this.env.AI_ENABLED!=='false',intervalSeconds:this.limits().intervalMs/1000,budget:{...budgetAt(budget,Date.now()),limit:this.limits().dailyTokens}}};
+  return {experimentId:this.record.startedAt,...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:1,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:this.record.study?studyRunning:Boolean(viewers&&ai.mode==='active'&&this.record.frameRemaining>0),studyStatus,collection:this.record.study?{runId:this.record.study.manifest.runId,evidenceClass:this.record.study.manifest.evidenceClass??'live-study',startedAt:this.record.study.startedAt,targetSimulatedSeconds:this.record.study.manifest.stopping.targetSimulatedSeconds,accountedInputTokens:this.record.study.accountedInputTokens,tokenBudgetPolicy:this.record.study.manifest.stopping.tokenBudgetPolicy??'fixed-input-cap'}:null,ai:{...ai,mode:showMode?ai.mode:'idle',configured:Boolean(this.env.TYPESAFE_API_KEY)&&this.env.AI_ENABLED!=='false',intervalSeconds:this.limits().intervalMs/1000,budget:{...budgetAt(budget,Date.now()),limit:this.limits().dailyTokens}}};
  }
  async replayData(page=0){return this.replay.read(page);}
  async captureReplay(sim){await this.replay.capture(sim);}
@@ -222,7 +222,13 @@ export class AirportSimulation extends DurableObject{
   const stopAfterResponse=studyStopReason(settled,Date.now());if(stopAfterResponse){stopStudy(settled,stopAfterResponse);outcomeEvents.push({kind:'study-stop',reason:stopAfterResponse,application:'not-applied'});await this.persist(settled,outcomeEvents);return;}
   if(outcomes.some(o=>o.status==='rejected')){
    const failed=settled;failed.frameRemaining=0;
-   if(failed.study){failed.ai.failures++;failed.ai.totalFailures++;stopStudy(failed,'provider-or-contract-failure');addEvent(failed.sim,'AI yanıtı yok · frozen study incomplete');outcomeEvents.push({kind:'study-stop',reason:'provider-or-contract-failure'});await this.ctx.storage.deleteAlarm();}
+   if(failed.study){
+    failed.ai.failures++;failed.ai.totalFailures++;
+    const rejected=outcomes.filter(o=>o.status==='rejected'),paymentRequired=rejected.some(o=>o.reason?.code==='provider-payment-required');
+    const retry=usesProviderBalance(failed.study.manifest)&&failed.ai.failures<=6&&rejected.every(o=>['provider-rate-limit','provider-overloaded'].includes(o.reason?.code));
+    if(retry){failed.ai.mode='backoff';failed.ai.nextAt=Date.now()+Math.min(600000,60000*2**(failed.ai.failures-1));outcomeEvents.push({kind:'collection-retry',reason:'provider-rate-limit-or-overload',attempt:failed.ai.failures,retryAt:failed.ai.nextAt,application:'not-applied'});}
+    else{const reason=paymentRequired?'provider-payment-required':'provider-or-contract-failure';stopStudy(failed,reason);addEvent(failed.sim,'AI yanıtı yok · frozen study incomplete');outcomeEvents.push({kind:'study-stop',reason});await this.ctx.storage.deleteAlarm();}
+   }
    else if(this.viewers()){failed.ai.failures++;failed.ai.totalFailures++;failed.ai.mode='backoff';failed.ai.nextAt=Date.now()+Math.min(600000,limits.intervalMs*2**Math.min(failed.ai.failures,4));addEvent(failed.sim,'AI yanıtı yok · deney duraklatıldı');}
    else{failed.paused=true;failed.ai.mode='idle';await this.ctx.storage.deleteAlarm();}
    await this.persist(failed,outcomeEvents);return;
@@ -310,7 +316,7 @@ export default{
    }else if(url.pathname==='/api/report'){
     const {success}=await env.STATE_READ_LIMITER.limit({key:'vector-atc-report'});
     response=success?Response.json(await env.AIRPORT.getByName(objectName(env)).report(),{headers:{'Cache-Control':'no-store','Content-Disposition':'attachment; filename="vector-atc-report.json"'}}):new Response('Too many requests',{status:429});
-   }else if(url.pathname==='/api/health')response=Response.json({ok:true,version:'0.6.6'},{headers:{'Cache-Control':'no-store'}});
+   }else if(url.pathname==='/api/health')response=Response.json({ok:true,version:'0.6.7'},{headers:{'Cache-Control':'no-store'}});
    else if(url.pathname==='/'||/^\/assets\/[a-zA-Z0-9._-]+\.(js|css|woff2?)$/.test(url.pathname))response=await env.ASSETS.fetch(request);
    else response=new Response('Not found',{status:404});
   }catch{response=Response.json({error:'Sektör geçici olarak kullanılamıyor.'},{status:503});}
