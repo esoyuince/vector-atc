@@ -44,7 +44,7 @@ Optional HTTP checks: `node test/http-smoke.mjs http://127.0.0.1:5173`. This che
 
 Cloudflare Workers serves static assets. A Durable Object coordinates the experiment, viewer presence, token reservations and replay. Rate-limiter bindings need distinct namespace IDs within your account. Hosting and TypeSafe charges belong to the deployer's accounts; token limits are not an account-wide monetary cap. There is no automatic deployment workflow in this repository.
 
-## Current implementation (0.6.0)
+## Current implementation (0.6.6)
 
 The default Worker is airborne-only. The pool still has 50 arrival and 50 departure identities, not 100 simultaneously airborne aircraft. Departures join at their first SID fix every 60 simulated seconds; the initial frame contains 50 arrivals plus one departure (204 flight-control questions). Pending identities are not sent to Jev. Initial conditions and scheduled releases are scenario inputs, not credited to Jev. Legacy mixed-scope constructors remain for explicitly labeled regression fixtures.
 
@@ -69,6 +69,8 @@ Build generates server/build-provenance.mjs from source, test, data and protocol
 - A generic transport-jet pilot model follows routes, holding entries and timed holding legs, with bounded acceleration, bank and vertical-rate changes. Under `jev-command-observe-v1`, schema-valid numeric commands execute even when they violate procedures. Procedure/holding altitude and speed limits, the FAP floor, glide path and SID gradient no longer substitute numeric targets or veto execution. `pilot.constraintWarnings` reports non-blocking command conflicts; actual violations, collisions and ground impacts remain measured. `pilot.unable` now reports physical performance limits only. Bank, acceleration, vertical-rate capability and lateral route/holding guidance are retained. No local controller selects traffic-avoidance maneuvers.
 
 The no-repair policy is an intentional synthetic experiment, not real pilot operating guidance. Malformed, out-of-catalog and stale responses are still rejected. A physically unattainable rate is limited by the existing aircraft approximation, with the original requested rate retained and the limitation exposed; no stronger performance is invented to satisfy a procedure. Touchdown/exit/crash lifecycle and respawn behavior are unchanged by this policy update.
+
+The v3 dataset corrects four STAR mappings and retains v2 holding/gradient fixes; see [dataset corrections and safe regeneration](docs/dataset-v3-corrections.md). Existing v1/v2 observations are preserved under their original data epochs, not relabeled.
 
 ## Methodology and evaluation
 
@@ -95,7 +97,7 @@ Recorded positions append approximately every five simulated seconds to paged Du
 
 ## Data and limitations
 
-The frozen `LTFM-SOUTH-v2` subset contains five physical runways, three active south-flow runways, two STARs, six SIDs, nine ILS transitions, three missed approaches and six holding fixes. [Source URLs and document hashes](docs/data-sources.json) record provenance. The committed [source-availability receipt](docs/source-verification-receipt.json) and [machine-assisted selected-value receipt](docs/source-value-verification-receipt.json) add reproducible checks without claiming independent aviation adjudication. Full third-party charts and private experiment artifacts are not included.
+The frozen `LTFM-SOUTH-v3` subset contains five physical runways, three active south-flow runways, two STARs, six SIDs, nine ILS transitions, three missed approaches and six holding fixes. [Source URLs and document hashes](docs/data-sources.json) record provenance. The committed [source-availability receipt](docs/source-verification-receipt.json) and [machine-assisted selected-value receipt](docs/source-value-verification-receipt.json) add reproducible checks without claiming independent aviation adjudication. Full third-party charts and private experiment artifacts are not included.
 
 The model uses local NM projection and standard-atmosphere IAS/TAS approximation without wind, terrain, wake turbulence or full ARINC turn anticipation. Narrow/wide-body performance constants are demonstration estimates, not manufacturer AFM data. FAA-inspired holding entry sectors, 60/90-second timing and bank limits are modeling assumptions, not complete Turkish operational compliance or a current AIRAC database. See [third-party notices](THIRD_PARTY_NOTICES.md).
 

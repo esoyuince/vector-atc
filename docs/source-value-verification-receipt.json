@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "dataset": "LTFM-SOUTH-v2",
-  "verifiedAt": "2026-09-18T08:38:23.663553+00:00",
+  "dataset": "LTFM-SOUTH-v3",
+  "verifiedAt": "2026-09-19T20:27:30.373855+00:00",
   "method": "PyMuPDF 1.27.2.3 text extraction from byte/hash-verified DHMI PDFs; regex checks; no OCR",
   "sourceFileVerificationReceiptSha256": "914657bf12038d9bb26e08848b09b0739fc834be24ccda198a4ad438ab0884ad",
   "contentAdjudication": false,
@@ -42,6 +42,13 @@
       "file": "LT_AD_2_LTFM_IAC_17_en.pdf",
       "bytes": 811202,
       "sha256": "210da8bc9471337d53f26458eac43be00c909e34de94ed1e5ba12b096414a729",
+      "pages": 1
+    },
+    {
+      "sourceId": "STAR_01",
+      "file": "LT_AD_2_LTFM_STAR_01_en.pdf",
+      "bytes": 754956,
+      "sha256": "5358189d2246bd2bfb65f586430c101a69d1d14d4b13ba67b2d8fa6e42dfe2d1",
       "pages": 1
     }
   ],
@@ -171,6 +178,59 @@
       },
       "pattern": "Descent on the GP below 4000 FT not permitted until passing AVTEQ",
       "matchedText": "Descent on the GP below 4000 FT not permitted until passing AVTEQ"
+    },
+    {
+      "id": "star-fm450-ceiling",
+      "sourceId": "STAR_01",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "procedure": "ERSEN1R",
+        "fix": "FM450",
+        "maxAltitude": 26000,
+        "noCeilingAt": "FM642"
+      },
+      "pattern": "\\[F260-\\]- FM450 - FM641",
+      "matchedText": "[F260-]- FM450 - FM641"
+    },
+    {
+      "id": "star-rixen-exact-speed",
+      "sourceId": "STAR_01",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "procedure": "RIXEN1P",
+        "fix": "RIXEN",
+        "speed": 250
+      },
+      "pattern": "\\[F190-;K250;L\\]- RIXEN",
+      "matchedText": "[F190-;K250;L]- RIXEN"
+    },
+    {
+      "id": "star-epeki-exact-speed",
+      "sourceId": "STAR_01",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "procedure": "ERSEN1R",
+        "fix": "EPEKI",
+        "speed": 280
+      },
+      "pattern": "\\[F280-;K280;R\\]- EPEKI",
+      "matchedText": "[F280-;K280;R]- EPEKI"
+    },
+    {
+      "id": "star-fm644-exact-speed",
+      "sourceId": "STAR_01",
+      "status": "verified-direct-text",
+      "page": 1,
+      "claim": {
+        "procedure": "ERSEN1R",
+        "fix": "FM644",
+        "speed": 250
+      },
+      "pattern": "FM645 \\[K250\\]- FM644 - FM643",
+      "matchedText": "FM645 [K250]- FM644 - FM643"
     }
   ],
   "manualReview": [

@@ -41,3 +41,10 @@ test('study preflight fails closed until frozen manifest and independent review 
  const result=spawnSync(process.execPath,['--import','./scripts/offline-guard.mjs','scripts/study-preflight.mjs'],{cwd:fileURLToPath(new URL('..',import.meta.url)),encoding:'utf8',timeout:10000});
  assert.equal(result.status,2,result.stderr);const report=JSON.parse(result.stdout);assert.ok(report.blockers.includes('frozen-run-manifest'));assert.ok(report.blockers.includes('independent-rule-review'));assert.deepEqual(report.externalPending,['real-provider-acceptance','production-acceptance']);
 });
+
+test('Python data generators and source verifiers participate in the frozen inventory',()=>{
+ const dir=path.join(root,'python-inventory');fs.mkdirSync(path.join(dir,'scripts'),{recursive:true});
+ const file=path.join(dir,'scripts','generator.py');fs.writeFileSync(file,'DATASET = 3\n');
+ const p=sourceInventory(dir);assert.ok(p.files['scripts/generator.py']);verifyInventory(dir,p);
+ fs.writeFileSync(file,'DATASET = 2\n');assert.throws(()=>verifyInventory(dir,p),/inventory/);
+});

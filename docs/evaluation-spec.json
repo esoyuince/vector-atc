@@ -2,7 +2,7 @@
   "protocolId": "vector-observational-v3",
   "status": "development-draft-not-preregistered",
   "schemaVersion": 1,
-  "datasetId": "LTFM-SOUTH-v2",
+  "datasetId": "LTFM-SOUTH-v3",
   "sourceValueVerification": "docs/source-value-verification-receipt.json",
   "studyDesign": "Single-arm, prespecified multi-run, budget-limited closed-loop software-system observation; no paid A/B required.",
   "targetScope": "Airborne control only; touchdown and documented departure exit may respawn after outcome measurement.",

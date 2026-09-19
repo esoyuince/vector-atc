@@ -10,3 +10,11 @@ test('only a complete evidenced external review can validate',()=>{
  for(const row of [...review.rules,...review.simulationAssumptions]){row.decision='accepted';row.evidence=['source/page checked'];}
  assert.deepEqual(validateRuleReview(review),{valid:true,errors:[]});review.rules[0].decision='accepted-with-limitation';review.rules[0].notes=null;assert.equal(validateRuleReview(review).valid,false);review.rules[0].notes='Declared limitation';assert.equal(validateRuleReview(review).valid,true);review.rules[1].decision='rejected';assert.equal(validateRuleReview(review).valid,false);
 });
+
+test('review identity follows the current evaluation dataset and rejects historical datasets',()=>{
+ assert.equal(template.dataset,spec.datasetId);
+ assert.equal(validateRuleReview(template).errors.includes('dataset'),false);
+ for(const dataset of ['LTFM-SOUTH-v1','LTFM-SOUTH-v2']){
+  assert.equal(validateRuleReview({...template,dataset}).errors.includes('dataset'),true);
+ }
+});

@@ -62,7 +62,7 @@ The closure tests cover viewer departure before dispatch, concurrent/duplicate h
 
 The optional networked command `npm run verify:aviation-sources -- NEW_RECEIPT.json` re-downloads only the public DHMI URLs listed in `docs/data-sources.json` and compares exact byte lengths/SHA-256 values. It does not call Jev/TypeSafe and is intentionally not part of offline CI. The committed receipt records 10/10 exact matches. The PDFs themselves are not committed, and hash identity is not domain adjudication.
 
-Given a local directory containing those hash-verified PDFs, npm run verify:aviation-values -- PDF_DIRECTORY NEW_VALUE_RECEIPT.json uses locally installed Python + PyMuPDF (the committed receipt used PyMuPDF 1.27.2.3) text extraction without OCR to check only prespecified direct-text patterns. The committed value receipt currently records 10 direct checks and 3 manual-review items. STAR constraint-to-fix spatial mapping, GAZGE/INSTA/ULQAL holding-speed interpretation, and holding geometry remain manual/domain-review work. This command does not call Jev/TypeSafe and is not independent adjudication.
+Given a local directory containing those hash-verified PDFs, npm run verify:aviation-values -- PDF_DIRECTORY NEW_VALUE_RECEIPT.json uses locally installed Python + PyMuPDF (the committed receipt used PyMuPDF 1.27.2.3) text extraction without OCR to check only prespecified direct-text patterns. The committed value receipt currently records 14 direct checks and 3 manual-review items. STAR constraint-to-fix spatial mapping, GAZGE/INSTA/ULQAL holding-speed interpretation, and holding geometry remain manual/domain-review work. This command does not call Jev/TypeSafe and is not independent adjudication.
 
 ## Explicit study start
 
@@ -85,3 +85,9 @@ Frozen data provenance is cross-checked between `src/ltfm-data.json` and `docs/d
 `docs/rule-review-template.json` is intentionally unapproved. A domain reviewer must supply evidence and decisions; software tests cannot set independent-review status. `npm run preflight:study -- MANIFEST REVIEW_PACKET REVIEW` fails closed when the frozen manifest or completed review is absent and still lists real-provider and production acceptance as external pending work.
 
 A completed external review should be saved outside the repository and passed to `npm run attach:rule-review -- FROZEN_MANIFEST REVIEW_PACKET REVIEW_JSON NEW_MANIFEST`. The tool validates every detector/assumption decision and verifies the exact review-packet SHA-256 and stores both packet and review SHA-256 in a new manifest without overwriting the original. Runtime reporting can only mark labels independently adjudicated when that manifest flag and hash are present. This links provenance; it does not verify the reviewer's real-world identity or expertise.
+
+## Frozen data regeneration
+
+`npm run test:data-generator` runs seven standard-library Python unit tests using synthetic coordinates; it needs Python 3 but no chart files or provider key. CI runs these separately from Node coverage.
+`npm run verify:data` additionally compares the complete regenerated dataset with tracked data using the local hash-frozen PDF/text inputs. Those third-party inputs are not committed.
+See [dataset-v3-corrections.md](dataset-v3-corrections.md) for the four corrections, read-only defaults and external-only candidate output.

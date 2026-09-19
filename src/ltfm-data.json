@@ -1,5 +1,5 @@
 {
-  "id": "LTFM-SOUTH-v2",
+  "id": "LTFM-SOUTH-v3",
   "retrieved": "2026-09-17",
   "name": "Istanbul Airport",
   "icao": "LTFM",
@@ -588,7 +588,7 @@
         {
           "fix": "RIXEN",
           "maxAltitude": 19000,
-          "maxSpeed": 250
+          "speed": 250
         },
         {
           "fix": "FM966",
@@ -647,24 +647,24 @@
         {
           "fix": "EPEKI",
           "maxAltitude": 28000,
-          "maxSpeed": 280
+          "speed": 280
         },
         {
           "fix": "FM641"
         },
         {
-          "fix": "FM450"
+          "fix": "FM450",
+          "maxAltitude": 26000
         },
         {
-          "fix": "FM642",
-          "maxAltitude": 26000
+          "fix": "FM642"
         },
         {
           "fix": "FM643"
         },
         {
           "fix": "FM644",
-          "maxSpeed": 250
+          "speed": 250
         },
         {
           "fix": "FM645"

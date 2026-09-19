@@ -48,7 +48,25 @@ CHECKS = [
     ("fap-floor-avteq", "IAC_17", r"Descent on the GP below 4000 FT not permitted until passing AVTEQ",
      {"fix": "AVTEQ", "altitude": 4000}),
 ]
+# STAR formal-description text is stored in reverse clause order by this frozen PDF.
+# Each pattern is bounded by the named fix/neighbours; do not infer spatial association.
+CHECKS += [
+    ("star-fm450-ceiling", "STAR_01", r"\[F260-\]- FM450 - FM641", {"procedure": "ERSEN1R", "fix": "FM450", "maxAltitude": 26000, "noCeilingAt": "FM642"}),
+    ("star-rixen-exact-speed", "STAR_01", r"\[F190-;K250;L\]- RIXEN", {"procedure": "RIXEN1P", "fix": "RIXEN", "speed": 250}),
+    ("star-epeki-exact-speed", "STAR_01", r"\[F280-;K280;R\]- EPEKI", {"procedure": "ERSEN1R", "fix": "EPEKI", "speed": 280}),
+    ("star-fm644-exact-speed", "STAR_01", r"FM645 \[K250\]- FM644 - FM643", {"procedure": "ERSEN1R", "fix": "FM644", "speed": 250}),
+]
+
 def claim_matches_data(check_id: str, claim: dict) -> bool:
+    if check_id.startswith("star-"):
+        procedure = DATA["procedures"][claim["procedure"]]
+        legs = {leg["fix"]: leg for leg in procedure["legs"]}
+        leg = legs[claim["fix"]]
+        if procedure["source"] != "STAR_01":
+            return False
+        if "speed" in claim:
+            return leg.get("speed") == claim["speed"] and "maxSpeed" not in leg
+        return leg.get("maxAltitude") == claim["maxAltitude"] and "maxAltitude" not in legs[claim["noCeilingAt"]]
     if check_id == "sid-gradient-304-8000":
         rows = [p for p in DATA["procedures"].values() if p["kind"] == "SID"]
         return bool(rows) and all(p.get("minClimbFtPerNm") == 304 and p.get("climbGradientUntil") == 8000

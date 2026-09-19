@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "textCanonicalization": "UTF-8 decoded text with CRLF/CR normalized to LF",
+  "method": "Frozen local text inputs used by the original dataset generator; each paired PDF must match docs/data-sources.json. Hashes bind artifacts, not independent domain validity.",
+  "inputs": [
+    {
+      "sourceId": "STAR_01_A",
+      "name": "LT_AD_2_LTFM_STAR_01_A_en",
+      "textSha256": "31123c9bb61a718bfd71dba23538a26c043ee5d6cda7f924c93595c59ba3ac40"
+    },
+    {
+      "sourceId": "SID_01_A",
+      "name": "LT_AD_2_LTFM_SID_01_A_en",
+      "textSha256": "08e371a8a35f3fceca00c98694942cc498237e148cd2d9e6ba4a554045e05837"
+    },
+    {
+      "sourceId": "IAC_13",
+      "name": "LT_AD_2_LTFM_IAC_13_en",
+      "textSha256": "0694f1ca1a78b8dddaf6d309901ef36f97b90d9909c06c5e5195198abc7f2047"
+    },
+    {
+      "sourceId": "IAC_15",
+      "name": "LT_AD_2_LTFM_IAC_15_en",
+      "textSha256": "950ebccc825931a7124f3cb31e8dc80d9179e9131849d28a09f1b8d0b2d465fc"
+    },
+    {
+      "sourceId": "IAC_17",
+      "name": "LT_AD_2_LTFM_IAC_17_en",
+      "textSha256": "75ba00f2677bbdae7c6c27bd5af8246142838ddcfa85cbfae3d59316bf72c754"
+    }
+  ]
+}

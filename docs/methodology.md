@@ -2,7 +2,7 @@
 
 Protocol: **vector-observational-v3**. Status: **development draft, not preregistered**.
 
-Dataset: **LTFM-SOUTH-v2**. It supersedes v1 for new observations after correcting source attribution for the SID gradient and adding three directly evidenced published missed-approach holding-speed maxima. Historical v1 observations remain preserved but are not backfilled or pooled into v3 denominators.
+Dataset: **LTFM-SOUTH-v3**. It supersedes v2 for new observations by moving the ERSEN1R FL260 ceiling to FM450 and preserving exact speeds at RIXEN, EPEKI and FM644. The v2 SID gradient attribution and three published missed-approach holding maxima are retained. Historical v1/v2 observations remain preserved and are not backfilled or pooled into the new data epoch. See [dataset-v3-corrections.md](dataset-v3-corrections.md).
 Machine-readable definitions: [evaluation-spec.json](evaluation-spec.json).
 Run template: [run-manifest.example.json](run-manifest.example.json).
 

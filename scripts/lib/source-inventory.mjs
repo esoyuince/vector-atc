@@ -12,7 +12,7 @@ export function sourceInventory(root){
    const file=path.posix.join(dir,d.name);
    if(d.isSymbolicLink())throw Error('Source symlink is not supported: '+file);
    if(d.isDirectory())walk(file);
-   else if(/\.(mjs|jsx|json|jsonc|css|md|yml|yaml)$/.test(file)&&file!=='server/build-provenance.mjs')files.push(file);
+   else if(/\.(mjs|jsx|json|jsonc|css|md|yml|yaml|py)$/.test(file)&&file!=='server/build-provenance.mjs')files.push(file);
   }
  }
  for(const dir of ['src','server','docs','scripts','test','.github'])walk(dir);
