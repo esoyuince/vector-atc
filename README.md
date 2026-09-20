@@ -21,6 +21,8 @@ On PowerShell, `Copy-Item` also works. Open `http://127.0.0.1:5173`.
 
 The example configuration disables AI calls. To run live simulation, enter your own `TYPESAFE_API_KEY` in `.dev.vars` and set `AI_ENABLED` to `"true"` in your local `wrangler.jsonc`. Without enabled AI, the UI remains available and the simulation pauses; there is no local ATC fallback.
 
+`SIM_SPEED` controls wall-clock acceleration from 1× through 20×; the deployment-neutral example uses 10×. Physics time, the scheduled Jev control cadence and Durable Object wake cadence scale together, while provider latency and provider-error backoff remain real wall-clock pauses. Delayed wakes are capped to a three-simulated-second physics chunk rather than catching up with a large jump. Frozen runs bind the effective speed inside their persisted runtime limits, so it cannot change silently on resume.
+
 Never commit `.env`, `.dev.vars`, credentials, exported state or deployment-specific configuration. Only blank credential examples are included. Never put secrets in `VITE_*` variables or client-side JavaScript.
 
 ## Validate

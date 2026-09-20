@@ -1,12 +1,12 @@
 // Generated from source bytes; no credentials or timestamps.
 export default {
   "schemaVersion": 2,
-  "sourceFingerprint": "d5dcb68902e2c6390af4c9f38116452a733f7349e4fda193353a5246a0fdf146",
+  "sourceFingerprint": "b6b364d10822fefba331085c56798467e96581f46aaa2fafe502aae4e90cd7e1",
   "files": {
     ".gitattributes": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c",
     ".github/workflows/ci.yml": "c793f4f1cf1ec141d7aad83d5dd168eae3cd4767be985904309142f72e803658",
     ".gitignore": "ad8e5ec8e04067f16673e8e33592c3d509507d7ed77d50e311e1573bcd0bf160",
-    "README.md": "35332ae1776ed4fccf55a66a72bcb5429dbf78f5a2100deac7c834c7792476dc",
+    "README.md": "c7606d5e22e315024bd25e588a53ea2822110eb2109a49ca60500fc0f3cd7281",
     "docs/data-sources.json": "6e9873ec17aeacc39c37bacc2f049c385c0df7cb13cd7b771add2cd83eb0886d",
     "docs/dataset-v3-corrections.md": "c6f75952937875f2e78ac85dedb3ca13580bebb3e86b8eab179aeb6dfd475edb",
     "docs/distributed-traffic-candidate.md": "0a8f92f88623ec3cf13f9da67ca7da27ad715f3708a5e1d45e23d076af63672e",
@@ -67,8 +67,8 @@ export default {
     "server/reset-experiment.mjs": "4a2ea42de8bb5a751f98dfc8c9ac1afbb4bd530b4a0af45bad68608e949de1bb",
     "server/study-run.mjs": "9661badf102ccb6c3027f854d6bcb4994c73346c05f2fdcf3bf041cefebf2afa",
     "server/typesafe.mjs": "4e5860f71dc3822638424ada5790214732f34dd5628211b2457c5f8842569b1d",
-    "server/worker.mjs": "5f80355bf8eec6bf88a911755db91e00bfd4701be941b8ea435e67f9cde0f42f",
-    "src/App.jsx": "0733e45a56db91d3da6a038e2fcc0843ca650540686ca9e5d70ca6e0f663bed4",
+    "server/worker.mjs": "eaf5c5b46c9dfed9ccfdc16c02d815fbd6dbfb2d82bb33483ee6515559a08236",
+    "src/App.jsx": "841acaeb520c37b7d3d377aa74a1e3fd8628510a3655b447006c5654bbef8fc0",
     "src/DecisionPanel.jsx": "7103a59f544908d4d1a058db33575b3552353f9c29f5e631a74e2dab162446dc",
     "src/EmergencyStopPanel.jsx": "2bf759d87994908c977fa27b1f63d41e0cc1c83ec291f5c8d721450897d660ff",
     "src/ProcedureInfo.jsx": "9a79d9611ba18be068ea48b0694bd7759d239cddd22fd6bdc90a7af8672ee9b6",
@@ -77,7 +77,7 @@ export default {
     "src/command-audit.mjs": "b44b5b4a9b8a159362088f0e1171a462c1bdf4b2d0158f90d942697afd034f45",
     "src/evaluation.mjs": "a0297fc5b6641be25c4e5a0c956a9d46bc0227d826b0baa751db584aec1beee4",
     "src/flight-events.mjs": "509345c42469e77d399d33fa57ad74576b4ab90953ecb25e27065da0e702f3e8",
-    "src/i18n.mjs": "a6228312920732a61bb5671734da62b3587cdc87ee94d87030b7e021ce925d67",
+    "src/i18n.mjs": "d26281618323480fb8892b01882103ec7fbc51d3d6b328654f976ffc8a9cb0eb",
     "src/ltfm-data.json": "6f528ec1b62f9ba7adba97c938856856d7a7797c7dbce50b24af4877f61a9f22",
     "src/main.jsx": "0d36475270e3921755a13412d63574b6223d20d779b57a52076128dfc13a1167",
     "src/observation-events.mjs": "6aa61aa48b2fb9f8acd7f4b7d5cffabd5e8bf914ba98f416917e67fef018cda0",
@@ -125,7 +125,7 @@ export default {
     "test/terminal-order.test.mjs": "4353cfae97a8d1c6bafdd3ec23bc0786b96b53f202dd902f1b357789e23f8865",
     "test/traffic-initialization.test.mjs": "2770052c2215ba8b5991596e1b7b69bb69166f79f0f7b296408521693f3c1dfc",
     "test/traffic-profile-math.test.mjs": "1cbd6ad3ddef86197bd8e2c43996f69aaef3285178a3cbb872e51ae13da04475",
-    "test/worker.test.mjs": "e20d377205334559ab9211cd109ba126b7d868a9e3b8ed3b7264bda81687efe4",
-    "wrangler.example.jsonc": "e3d0f96841114c1b883be1bd078cbe8cf59d8a67a0fdd9851e05f6582e83cc8f"
+    "test/worker.test.mjs": "1bb28cf339d5bbf34e9029407c3427b10df8ddded00826ed68d166df097c05c1",
+    "wrangler.example.jsonc": "901efa0ee7fd4ba843b01f0a2681521e87d83c52a331c1347aef07ccc6aff515"
   }
 };

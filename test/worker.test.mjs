@@ -46,6 +46,24 @@ test('critical prediction preempts regular timer only for involved aircraft and 
  h.advance(2000);await c.alarm();assert.equal(c.record.ai.mode,'budget-limit');assert.equal(h.calls.length,count);
 });
 
+test('SIM_SPEED advances simulated time and scheduled Jev cadence on the same scale',async t=>{
+ const h=await harness(t,new Map(),{SIM_SCOPE:'airborne',SIM_SPEED:'10'}),c=h.controller,expected=expectedFrameCalls(c);
+ await c.heartbeat('viewer',1,true);await c.alarm();
+ assert.equal((await c.snapshot()).speed,10);assert.equal((await c.snapshot()).ai.wallIntervalSeconds,6);
+ assert.equal(h.calls.length,expected);assert.equal(c.record.frameRemaining,60);c.record.ai.lastConflictAt=Infinity;
+ for(let i=0;i<20;i++){h.advance(200);await c.alarm();}
+ assert.equal(c.record.sim.elapsed,40);assert.equal(c.record.frameRemaining,20);assert.equal(h.calls.length,expected);
+ for(let i=0;i<10;i++){h.advance(200);await c.alarm();}
+ assert.equal(c.record.sim.elapsed,60);assert.equal(h.calls.length,expected*2,'next scheduled frame starts after 60 simulated seconds, not 60 wall seconds');
+ assert.equal(c.record.frameRemaining,60);
+});
+
+test('SIM_SPEED accepts 1-20 and falls back closed outside the range',async t=>{
+ const low=await harness(t,new Map(),{SIM_SPEED:'0'});assert.equal(low.controller.limits().simSpeed,1);
+ const high=await harness(t,new Map(),{SIM_SPEED:'21'});assert.equal(high.controller.limits().simSpeed,1);
+ const valid=await harness(t,new Map(),{SIM_SPEED:'20'});assert.equal(valid.controller.limits().simSpeed,20);
+});
+
 test('pilot migration archives original state once and preserves budget, elapsed and replay',async t=>{
  const initial=await harness(t),old=structuredClone(initial.controller.record);delete old.sim.physicsEpoch;old.sim.elapsed=123;old.budget.tokens=456;
  const stored=new Map([['airport-ltfm-v1',old],['total-visits',15]]);

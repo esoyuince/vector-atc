@@ -54,7 +54,7 @@
     "AI_INTERVAL_SECONDS": "60",
     "AI_DAILY_TOKEN_LIMIT": "3800000",
     "AI_HOURLY_REQUEST_LIMIT": "720",
-    "SIM_SPEED": "1"
+    "SIM_SPEED": "10"
   },
   "observability": {
     "enabled": true,

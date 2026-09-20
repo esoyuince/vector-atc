@@ -31,6 +31,7 @@ const english={
  "Sektör bağlantısı kesildi · yeniden bağlanılıyor": "Sector connection lost · reconnecting",
  "100 UÇAK · OTONOM KONTROL DENEYİ": "100 AIRCRAFT · AUTONOMOUS CONTROL EXPERIMENT",
  "Deney raporu ↓": "Experiment report ↓",
+ "DENEY ZAMANI": "SIMULATION TIME",
  "DENEY ZAMANI · 1×": "SIMULATION TIME · 1×",
  "SEKTÖR": "SECTOR",
  "İstanbul / Sentetik terminal": "Istanbul / Synthetic terminal",

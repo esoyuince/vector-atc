@@ -79,7 +79,7 @@ export class AirportSimulation extends DurableObject{
    this.replay=await ReplayArchive.open(ctx.storage,this.record.sim.flights.map(f=>f.id));
   });
  }
- limits(){return {...DEFAULT_LIMITS,dailyTokens:dailyTokenLimit(this.env.AI_DAILY_TOKEN_LIMIT,usesProviderBalance(this.record?.study?.manifest)),hourlyRequests:safeInt(this.env.AI_HOURLY_REQUEST_LIMIT,720,1,720),intervalMs:safeInt(this.env.AI_INTERVAL_SECONDS,60,60,3600)*1000};}
+ limits(){return {...DEFAULT_LIMITS,dailyTokens:dailyTokenLimit(this.env.AI_DAILY_TOKEN_LIMIT,usesProviderBalance(this.record?.study?.manifest)),hourlyRequests:safeInt(this.env.AI_HOURLY_REQUEST_LIMIT,720,1,720),intervalMs:safeInt(this.env.AI_INTERVAL_SECONDS,60,60,3600)*1000,simSpeed:safeInt(this.env.SIM_SPEED,1,1,20)};}
  viewers(now=Date.now()){return [...this.presence.values()].filter(p=>p.active&&p.expires>now).length;}
  studyRunning(){return !stopRequested(this)&&this.record.study?.status==='running';}
  async emergencyStopRun(target){return requestEmergencyStop(this,target);}
@@ -113,8 +113,8 @@ export class AirportSimulation extends DurableObject{
   });
  }
  async snapshot(){
-  const {sim,ai,budget}=this.record,viewers=this.viewers(),studyStatus=this.record.study?.status??null,configured=Boolean(this.env.TYPESAFE_API_KEY)&&this.env.AI_ENABLED!=='false'&&!stopRequested(this),studyRunning=studyStatus==='running'&&configured,showMode=Boolean(viewers||studyRunning||['archive-error','input-too-large','study-stopped'].includes(ai.mode));
-  return {experimentId:this.record.startedAt,operatorTarget:stopTarget(this.record),emergencyStop:stopView(this),...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:1,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:this.record.study?studyRunning:Boolean(configured&&viewers&&ai.mode==='active'&&this.record.frameRemaining>0),studyStatus,collection:this.record.study?{runId:this.record.study.manifest.runId,evidenceClass:this.record.study.manifest.evidenceClass??'live-study',startedAt:this.record.study.startedAt,targetSimulatedSeconds:this.record.study.manifest.stopping.targetSimulatedSeconds,accountedInputTokens:this.record.study.accountedInputTokens,tokenBudgetPolicy:this.record.study.manifest.stopping.tokenBudgetPolicy??'fixed-input-cap'}:null,ai:{...ai,mode:showMode?ai.mode:'idle',configured,intervalSeconds:this.limits().intervalMs/1000,budget:{...budgetAt(budget,Date.now()),limit:this.limits().dailyTokens}}};
+  const {sim,ai,budget}=this.record,viewers=this.viewers(),studyStatus=this.record.study?.status??null,configured=Boolean(this.env.TYPESAFE_API_KEY)&&this.env.AI_ENABLED!=='false'&&!stopRequested(this),studyRunning=studyStatus==='running'&&configured,showMode=Boolean(viewers||studyRunning||['archive-error','input-too-large','study-stopped'].includes(ai.mode)),limits=this.limits();
+  return {experimentId:this.record.startedAt,operatorTarget:stopTarget(this.record),emergencyStop:stopView(this),...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:limits.simSpeed,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:this.record.study?studyRunning:Boolean(configured&&viewers&&ai.mode==='active'&&this.record.frameRemaining>0),studyStatus,collection:this.record.study?{runId:this.record.study.manifest.runId,evidenceClass:this.record.study.manifest.evidenceClass??'live-study',startedAt:this.record.study.startedAt,targetSimulatedSeconds:this.record.study.manifest.stopping.targetSimulatedSeconds,accountedInputTokens:this.record.study.accountedInputTokens,tokenBudgetPolicy:this.record.study.manifest.stopping.tokenBudgetPolicy??'fixed-input-cap'}:null,ai:{...ai,mode:showMode?ai.mode:'idle',configured,intervalSeconds:limits.intervalMs/1000,wallIntervalSeconds:limits.intervalMs/1000/limits.simSpeed,budget:{...budgetAt(budget,Date.now()),limit:limits.dailyTokens}}};
  }
  async replayData(page=0){return this.replay.read(page);}
  async captureReplay(sim){await this.replay.capture(sim);}
@@ -163,7 +163,7 @@ export class AirportSimulation extends DurableObject{
  }
  async runAlarm(){
   assertNotStopped(this);
-  const now=Date.now(),next=structuredClone(this.record),limits=this.limits(),journalEvents=[];
+  const now=Date.now(),next=structuredClone(this.record),limits=this.limits(),simSpeed=limits.simSpeed,journalEvents=[];
   if(['archive-error','study-stopped'].includes(next.ai.mode)||['archive-error','study-stopped'].includes(next.ai.waitMode)){await this.ctx.storage.deleteAlarm();return;}
   if(next.study?.status==='ready'){await this.ctx.storage.deleteAlarm();return;}
   const stopBefore=studyStopReason(next,now);if(stopBefore){stopStudy(next,stopBefore);await this.persist(next,[{kind:'study-stop',reason:stopBefore}]);await this.ctx.storage.deleteAlarm();return;}
@@ -171,19 +171,19 @@ export class AirportSimulation extends DurableObject{
   if(this.env.AI_ENABLED==='false'||!this.env.TYPESAFE_API_KEY){
    next.ai.mode='disabled';next.frameRemaining=0;await this.persist(next,journalEvents);await this.ctx.storage.deleteAlarm();return;
   }
-  await this.ctx.storage.setAlarm(now+2000);
+  await this.ctx.storage.setAlarm(now+Math.max(100,Math.ceil(2000/simSpeed)));
   assertNotStopped(this);
   if(this.inFlight||now<next.nextTick)return;
   if(next.ai.blockedRevision===next.sim.revision&&next.ai.blockedContextVersion===TYPESAFE_CONTEXT_VERSION){await this.ctx.storage.deleteAlarm();return;}
   if(next.paused){next.paused=false;next.sim.lastWall=now;next.ai.mode=['budget-limit','backoff','disabled','input-too-large','archive-error','study-stopped'].includes(next.ai.waitMode)?next.ai.waitMode:'awaiting';}
   if(next.ai.mode==='active'&&next.frameRemaining>0){
-   const seconds=Math.min(next.study?Math.max(0,next.study.manifest.stopping.targetSimulatedSeconds-(next.sim.elapsed-next.study.startSimSeconds)):Infinity,next.frameRemaining,Math.max(0,Math.min(3,(now-next.sim.lastWall)/1000)));
+   const seconds=Math.min(next.study?Math.max(0,next.study.manifest.stopping.targetSimulatedSeconds-(next.sim.elapsed-next.study.startSimSeconds)):Infinity,next.frameRemaining,Math.max(0,Math.min(3,(now-next.sim.lastWall)/1000*simSpeed)));
    const beforeElapsed=next.sim.elapsed;const capture=collectObservations(next.sim,()=>advanceSimulation(next.sim,seconds));journalEvents.push({kind:'physics-step',from:beforeElapsed,to:next.sim.elapsed,events:capture.events});next.frameRemaining-=next.sim.elapsed-beforeElapsed;
    if(next.frameRemaining<=0)next.ai.mode='awaiting';
   }
   const stopAfter=studyStopReason(next,now);if(stopAfter){stopStudy(next,stopAfter);journalEvents.push({kind:'study-stop',reason:stopAfter});await this.persist(next,journalEvents);await this.ctx.storage.deleteAlarm();return;}
   if(next.sim.trafficScope===AIRBORNE_SCOPE&&next.sim.requiresDecision){next.frameRemaining=0;next.ai.nextAt=0;next.ai.mode='awaiting';}
-  next.sim.lastWall=now;next.nextTick=now+1500;
+  next.sim.lastWall=now;next.nextTick=now+Math.max(75,Math.ceil(1500/simSpeed));
   // Re-evaluate a blocked frame after a configured cap change; never reset spent tokens.
   const legacyBudgetWait=next.ai.mode==='awaiting'&&next.ai.budgetLimit===undefined&&next.ai.nextAt>now+limits.intervalMs;
   if((next.ai.mode==='budget-limit'||legacyBudgetWait)&&next.ai.budgetLimit!==limits.dailyTokens)next.ai.nextAt=0;
@@ -231,7 +231,7 @@ export class AirportSimulation extends DurableObject{
   }
   journalEvents.push({kind:'dispatch-intent',plan:{revision:plan.revision,flights:plan.flights,runways:plan.runways},planRevision:plan.revision,trigger:plan.state.trigger,requests:requests.map(r=>JSON.stringify(r)),reservations});
   if(next.study)next.study.accountedInputTokens+=totalReserve;
-  next.budget=reservation;next.ai.totalCalls+=requests.length;next.ai.mode='evaluating';if(!emergency)next.ai.nextAt=now+limits.intervalMs;await this.persist(next,journalEvents);
+  next.budget=reservation;next.ai.totalCalls+=requests.length;next.ai.mode='evaluating';if(!emergency)next.ai.nextAt=now+Math.max(1000,Math.ceil(limits.intervalMs/simSpeed));await this.persist(next,journalEvents);
   if(stopRequested(this))return settleStoppedDispatch(this,{reservation,reservations,planRevision:plan.revision,budgetBeforeDispatch,sent:false});
   if(!this.studyRunning()&&!this.viewers()){
    const cancelled=structuredClone(this.record);
