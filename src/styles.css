@@ -42,3 +42,22 @@
 .language-select{padding:6px 10px;font-size:12px;flex-shrink:0}footer a{color:var(--mint)}.visitor-count{white-space:nowrap}
 
 .procedure-path,.holding-path,.selected-procedure{fill:none;stroke-width:1}.procedure-path.STAR{stroke:#528ead;opacity:.45}.procedure-path.SID{stroke:#71b18e;opacity:.35}.holding-path{stroke:#c7ae70;stroke-dasharray:3 2}.selected-procedure{stroke:#9ff9c9;stroke-width:1.5}.fix-label{fill:#97adb8;font:8px var(--mono);paint-order:stroke;stroke:#0b151d;stroke-width:2px}.fix-dot{fill:#a7c7d4}.physical-runway{stroke:#d4e8ec;stroke-width:3}.physical-runway.standby{stroke:#566873;stroke-width:2}.radar-tools{position:absolute;left:18px;top:42px;z-index:2;display:flex;gap:12px;align-items:center;font:11px var(--mono);color:var(--muted)}.radar-tools select{padding:4px;font-size:11px}.radar-tools label{display:flex;align-items:center;gap:5px}.procedure-info{padding:12px 24px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.6}.procedure-info summary{cursor:pointer;color:var(--mint)}.procedure-info ul{display:flex;flex-wrap:wrap;gap:6px 24px;padding-left:18px}.procedure-info a{color:#a5c9db}.replay-note{padding:0 24px;color:var(--amber);font-size:13px}.radar-summary{font-size:10px}@media(max-width:760px){.procedure-info{padding:12px 16px}.radar-tools{top:42px;left:12px}.radar-live{font-size:8px}}
+
+/* Operator control: separate from flight commands, visible without exposing a credential. */
+.operator-stop-panel{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 24px;border-bottom:1px solid #763940;background:#21171d;color:#f3e7e8}
+.operator-stop-panel p{font-size:12px;line-height:1.5;margin:4px 0 0}
+.operator-stop-panel strong{font-size:13px;letter-spacing:.04em}
+.emergency-stop-button{background:#9f2733;color:#fff;border:1px solid #ef8791;border-radius:4px;padding:12px 16px;min-height:44px;font:inherit;font-weight:700;cursor:pointer;white-space:normal}
+.emergency-stop-button:hover:not(:disabled){background:#ba3040}
+.emergency-stop-button:disabled{opacity:.6;cursor:default}
+.operator-stop-dialog{width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;border:1px solid #b65b68;border-radius:6px;padding:24px;background:#121c24;color:#eef5f8}
+.operator-stop-dialog::backdrop{background:#000b}
+.operator-stop-dialog h2{margin:0 0 16px;font-size:20px;line-height:1.35}
+.operator-stop-dialog p{font-size:14px;line-height:1.6}
+.operator-stop-dialog label,.operator-stop-dialog small{display:block;margin:10px 0;font-size:13px}
+.operator-stop-dialog input{width:100%;min-height:44px;padding:10px;border:1px solid #7191a5;border-radius:3px;background:#0b141c;color:#fff;font:inherit;box-sizing:border-box}
+.operator-stop-dialog .stop-target{overflow-wrap:anywhere;color:#b6cbd7;font-size:12px}
+.stop-dialog-actions{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:20px}
+.stop-dialog-actions>button{min-height:44px;padding:10px 14px}
+.operator-stop-panel button:focus-visible,.operator-stop-dialog button:focus-visible,.operator-stop-dialog input:focus-visible{outline:3px solid #fff;outline-offset:3px}
+@media(max-width:600px){.operator-stop-panel{padding:12px 16px;align-items:flex-start;flex-direction:column}.operator-stop-panel>.emergency-stop-button{width:100%}.operator-stop-dialog{padding:18px}.stop-dialog-actions{flex-direction:column-reverse}.stop-dialog-actions>button{width:100%}}

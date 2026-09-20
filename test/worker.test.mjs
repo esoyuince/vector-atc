@@ -494,3 +494,115 @@ test('collection overload retries are bounded and never apply a failed frame',as
  await c.armStudyRun();for(let attempt=0;attempt<7;attempt++){await c.alarm();h.advance(601000);}
  assert.equal(c.record.study.status,'incomplete');assert.equal(c.record.study.stopReason,'provider-or-contract-failure');assert.equal(c.record.ai.frames,0);assert.equal(c.record.sim.elapsed,0);assert.equal(h.alarm(),null);
 });
+
+const operatorTarget=c=>({runId:c.record.study?.manifest.runId??null,experimentId:c.record.startedAt});
+const emergencyStop=c=>c.emergencyStopRun(operatorTarget(c));
+test('operator stop is durable, idempotent and cannot be undone by arm, viewers or alarm retry',async t=>{
+ const h=await frozenFixtureHarness(t,100),c=h.controller;await c.alarm();
+ const sim=structuredClone(c.record.sim),beforeCalls=h.calls.length;
+ const first=await emergencyStop(c),head=(await c.researchData()).headSha256;
+ assert.equal(first.ok,true);assert.equal(first.durable,true);assert.equal(c.record.study.stopReason,'operator-stop');
+ const again=await emergencyStop(c);assert.equal(again.id,first.id);assert.equal((await c.researchData()).headSha256,head);
+ await assert.rejects(c.armStudyRun(),/Operator stop/);
+ await c.heartbeat('viewer-after-stop',1,true);await c.alarm();assert.equal(h.alarm(),null);
+ assert.deepEqual(c.record.sim,sim);assert.equal(h.calls.length,beforeCalls);
+ const reload=await harness(t,h.stored,{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(c.record.study.manifest),RESEARCH_RUN_ID:c.record.study.manifest.runId});
+ await reload.controller.alarm();assert.equal(reload.calls.length,0);assert.equal(reload.controller.record.study.stopReason,'operator-stop');
+ assert.equal((await reload.controller.snapshot()).running,false);assert.equal((await reload.controller.snapshot()).emergencyStop.id,first.id);
+ assert.deepEqual(reload.controller.record.sim,sim);
+});
+test('operator stop before arm preserves zero exposure and never creates an evaluated study-stop event',async t=>{
+ const h=await frozenFixtureHarness(t,10,false),c=h.controller;
+ const bad=await c.emergencyStopRun({...operatorTarget(c),experimentId:-1});assert.equal(bad.ok,false);assert.equal(c.stopLatch,undefined);
+ await emergencyStop(c);await assert.rejects(c.armStudyRun(),/Operator stop/);await c.alarm();
+ assert.equal(h.calls.length,0);assert.equal(c.record.sim.elapsed,0);assert.equal(c.record.study.status,'incomplete');
+ const events=(await journalEntries(c)).flatMap(e=>e.events);
+ assert.equal(events.filter(e=>e.kind==='operator-stop-before-arm').length,1);assert.equal(events.filter(e=>e.kind==='study-stop').length,0);
+});
+test('stop interrupts a provider wait; a transport that ignores abort cannot apply its late reply',async t=>{
+ const h=await frozenFixtureHarness(t,100),c=h.controller,initial=structuredClone(c.record.sim),pending=[];
+ let started;const dispatched=new Promise(resolve=>{started=resolve;});
+ t.mock.method(globalThis,'fetch',async(_url,opts)=>{const request=JSON.parse(opts.body);h.calls.push(request);return new Promise(resolve=>{pending.push({resolve,request,signal:opts.signal});started();});});
+ const alarm=c.alarm();await dispatched;const receipt=await emergencyStop(c);
+ assert.equal(receipt.durable,true);assert.ok(pending.every(p=>p.signal.aborted));assert.equal(c.record.study.status,'incomplete');
+ const count=pending.length;for(const p of pending)p.resolve(Response.json(response(p.request)));await alarm;
+ assert.deepEqual(c.record.sim,initial);assert.equal(c.record.ai.frames,0);assert.equal(c.record.ai.mode,'study-stopped');
+ assert.equal(c.record.study.accountedInputTokens,count*1000);assert.equal(c.record.budget.actualTokens,count*1000);
+ const events=(await journalEntries(c)).flatMap(e=>e.events),stopIndex=events.findIndex(e=>e.kind==='study-stop');
+ assert.ok(events.findIndex(e=>e.kind==='dispatch-outcomes')>stopIndex);assert.ok(!events.some(e=>e.kind==='application'));
+ await c.alarm();assert.equal(h.calls.length,count);assert.equal(h.alarm(),null);
+});
+test('abort retains uncertain charges and cannot schedule a provider retry after stop',async t=>{
+ const h=await frozenFixtureHarness(t,100),c=h.controller;let started;const dispatched=new Promise(resolve=>{started=resolve;});
+ t.mock.method(globalThis,'fetch',async(_url,opts)=>{h.calls.push(JSON.parse(opts.body));return new Promise((_resolve,reject)=>{opts.signal.addEventListener('abort',()=>reject(new DOMException('aborted','AbortError')),{once:true});started();});});
+ const alarm=c.alarm();await dispatched;const reserved=c.record.study.accountedInputTokens;await emergencyStop(c);await alarm;
+ assert.equal(c.record.study.accountedInputTokens,reserved);assert.equal(c.record.budget.actualTokens,0);
+ assert.equal(c.record.ai.stopReason,'operator-stop');assert.equal(c.record.emergencyStop.pendingDispatch,false);assert.equal(h.alarm(),null);
+});
+test('stop during intent persistence releases known-unsent reservations and prevents outbound dispatch',async t=>{
+ const h=await frozenFixtureHarness(t,100),c=h.controller,commit=c.journal.commit.bind(c.journal);
+ let entered,release;const waiting=new Promise(r=>{entered=r;}),gate=new Promise(r=>{release=r;});
+ c.journal.commit=async(key,record,events)=>{const result=await commit(key,record,events);if(events.some(e=>e.kind==='dispatch-intent')){entered();await gate;}return result;};
+ const alarm=c.alarm();await waiting;const stopped=emergencyStop(c);release();await Promise.all([alarm,stopped]);
+ assert.equal(h.calls.length,0);assert.equal(c.record.ai.totalCalls,0);assert.equal(c.record.study.accountedInputTokens,0);
+ assert.equal(c.record.sim.elapsed,0);assert.equal(c.record.ai.stopReason,'operator-stop');assert.equal(h.alarm(),null);
+ assert.ok((await journalEntries(c)).flatMap(e=>e.events).some(e=>e.kind==='dispatch-cancelled'&&e.reason==='operator-stop-before-send'));
+});
+test('full journal cannot prevent the persistent emergency latch, and recovery remains stopped',async t=>{
+ const h=await frozenFixtureHarness(t,100),c=h.controller;await c.alarm();
+ const before=await c.researchData(),sim=structuredClone(c.record.sim);c.journal.maxBytes=before.totalBytes;
+ const receipt=await emergencyStop(c);assert.equal(receipt.durable,true);assert.equal(receipt.journalStatus,'unavailable');
+ assert.equal((await c.researchData()).headSha256,before.headSha256);assert.deepEqual(c.record.sim,sim);
+ const reload=await harness(t,h.stored,{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(c.record.study.manifest),RESEARCH_RUN_ID:c.record.study.manifest.runId});
+ await reload.controller.alarm();assert.equal(reload.calls.length,0);assert.equal((await reload.controller.snapshot()).running,false);
+ assert.equal((await reload.controller.report()).evaluation.dataAvailability.fullDecisionJournal,false);
+});
+test('stop never acknowledges a failed latch write and a retry cannot unstop the in-memory run',async t=>{
+ const h=await frozenFixtureHarness(t,100),c=h.controller,put=c.ctx.storage.put;let fail=true;
+ c.ctx.storage.put=async(key,value)=>{if(key==='operator-stop-v1'&&fail){fail=false;throw Error('fixture-storage-unavailable');}return put(key,value);};
+ await assert.rejects(emergencyStop(c),/storage-unavailable/);assert.equal((await c.snapshot()).running,false);
+ await c.alarm();assert.equal(h.calls.length,0);const receipt=await emergencyStop(c);assert.equal(receipt.durable,true);
+});
+test('stop after reply but before frame commit fences the cloned commands and settles usage once',async t=>{
+ const h=await frozenFixtureHarness(t,100),c=h.controller,sim=structuredClone(c.record.sim),persist=c.persist.bind(c);
+ c.persist=async(next,events=[])=>{if(events.some(e=>e.kind==='frame-result'))await emergencyStop(c);return persist(next,events);};
+ await c.alarm();assert.deepEqual(c.record.sim,sim);assert.equal(c.record.ai.frames,0);
+ assert.equal(c.record.budget.actualTokens,h.calls.length*1000);assert.equal(c.record.study.accountedInputTokens,h.calls.length*1000);
+ const events=(await journalEntries(c)).flatMap(e=>e.events);assert.equal(events.filter(e=>e.kind==='dispatch-outcomes').length,1);assert.ok(!events.some(e=>e.kind==='application'));
+});
+test('a disabled running study is displayed as paused and cannot take one more physics step',async t=>{
+ const h=await frozenFixtureHarness(t,100),c=h.controller;await c.alarm();const elapsed=c.record.sim.elapsed,calls=h.calls.length;
+ c.env.AI_ENABLED='false';h.advance(2000);await c.alarm();
+ assert.equal(c.record.sim.elapsed,elapsed);assert.equal(h.calls.length,calls);assert.equal((await c.snapshot()).running,false);assert.equal(h.alarm(),null);
+});
+test('authenticated stop checks origin, fixed target body and identity without exposing its token',async()=>{
+ const token='operator-stop-fixture-token-0123456789abcdef',target={runId:'unit-stop',experimentId:123};let calls=0;
+ const env={STUDY_ARM_TOKEN:token,RESEARCH_RUN_ID:target.runId,AIRPORT:{getByName:()=>({emergencyStopRun:async supplied=>{calls++;return {ok:supplied.experimentId===123,stopped:true,durable:true,id:'fixture-stop'};}})}};
+ const request=(body=target,authorization='Bearer '+token,origin='https://fixture.invalid')=>new Request('https://fixture.invalid/api/operator/stop',{method:'POST',headers:{authorization,'content-type':'application/json',Origin:origin},body:JSON.stringify(body)});
+ for(const r of [request(target,'Bearer wrong'),request(target,'Bearer '+token,'https://foreign.invalid')])assert.equal((await worker.fetch(r,env)).status,403);
+ for(const body of [null,{}, {...target,extra:'not-evidence'}, {...target,experimentId:'123'}, {...target,runId:'x'.repeat(400)}])assert.equal((await worker.fetch(request(body),env)).status,400);
+ assert.equal(calls,0);assert.equal((await worker.fetch(request({...target,experimentId:456}),env)).status,409);
+ const response=await worker.fetch(request(),env);assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');assert.ok(!(await response.text()).includes(token));
+ assert.equal((await worker.fetch(new Request('https://fixture.invalid/api/operator/stop'),env)).status,404);
+});
+test('an exported stopped run replays exactly and remains an incomplete operator-stopped observation',async t=>{
+ const h=await frozenFixtureHarness(t,100),c=h.controller;await c.alarm();h.advance(2000);await c.alarm();await emergencyStop(c);
+ const fs=await import('node:fs'),os=await import('node:os'),path=await import('node:path');
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'vector-stop-replay-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ const meta=await c.researchData(),entries=[];
+ for(let i=0;i<meta.nextSequence;i++){const d=await c.researchData(i);let text='';for(let j=0;j<d.chunkCount;j++)text+=(await c.researchData(i,j)).text;fs.writeFileSync(path.join(dir,String(i).padStart(8,'0')+'.json'),text);entries.push(d);}
+ fs.writeFileSync(path.join(dir,'manifest.json'),JSON.stringify({meta,entries}));
+ const {analyzeResearch}=await import('../scripts/lib/research-analysis.mjs'),result=await analyzeResearch(dir);
+ assert.equal(result.stopReason,'operator-stop');assert.equal(result.prefixStatus,'incomplete');assert.equal(result.checkpoints,entries.length);
+ assert.equal(result.commands.commands,c.record.sim.commandAudit.checkedCommands);
+});
+test('a crash after the durable latch but before state/journal completion recovers without inference',async t=>{
+ const h=await frozenFixtureHarness(t,100),c=h.controller,put=c.ctx.storage.put;await c.alarm();
+ c.journal.commit=async()=>{throw Error('fixture-journal-failure');};
+ c.ctx.storage.put=async(key,value)=>{if(key==='airport-ltfm-v1'&&value.emergencyStop)throw Error('fixture-state-failure');return put(key,value);};
+ await assert.rejects(emergencyStop(c),/state-failure/);const latch=h.stored.get('operator-stop-v1');assert.ok(latch);
+ assert.equal(h.stored.get('airport-ltfm-v1').study.status,'running');
+ const reload=await harness(t,h.stored,{SIM_SCOPE:'airborne-only',RUN_MANIFEST_JSON:JSON.stringify(c.record.study.manifest),RESEARCH_RUN_ID:c.record.study.manifest.runId});
+ await reload.controller.alarm();assert.equal(reload.calls.length,0);assert.equal(reload.controller.record.study.stopReason,'operator-stop');
+ assert.equal((await reload.controller.snapshot()).emergencyStop.id,latch.id);
+});

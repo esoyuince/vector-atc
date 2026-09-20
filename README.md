@@ -129,3 +129,7 @@ See [offline validation](docs/offline-validation.md). Run `npm run test:offline`
 ## Explicit provider-balance collection
 
 See [unreviewed live collection](docs/provider-balance-collection.md) for the optional token-uncapped, operator-armed run. This is separate from an independently reviewed paper cohort.
+
+## Operator emergency stop (candidate)
+
+See [operator-emergency-stop.md](docs/operator-emergency-stop.md) for the authenticated stop button, permanent per-run latch, explicit-target CLI, in-flight accounting and archive-failure semantics. Stopping never deletes flight evidence. The new mechanism must pass local and deployment acceptance before a new live collection. Old frozen manifests cannot be reused after changing source identity.

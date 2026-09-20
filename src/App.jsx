@@ -1,3 +1,4 @@
+import EmergencyStopPanel from './EmergencyStopPanel.jsx';
 import {replayState,ReplayPlayer} from './replay.mjs';
 import ProcedureInfo from './ProcedureInfo.jsx';
 import {translator} from './i18n.mjs';
@@ -13,7 +14,9 @@ export default function App(){
  const [liveState,setState]=useState(null),[selected,setSelected]=useState('AJT151'),[filter,setFilter]=useState('all'),[search,setSearch]=useState(''),[error,setError]=useState(''),[now,setNow]=useState(Date.now()),[showGround,setShowGround]=useState(false);
  const [recording,setRecording]=useState(null),[replayStart,setReplayStart]=useState(0),[replayError,setReplayError]=useState(false);
  const replay=liveState?.ai.mode==='budget-limit'?replayState(liveState,recording,(now-replayStart)/1000,{loop:false}):null;
- const state=replay||liveState;
+ const [operatorReceipt,setOperatorReceipt]=useState(null);
+ const confirmedStop=operatorReceipt&&liveState&&operatorReceipt.experimentId===liveState.experimentId&&operatorReceipt.runId===(liveState.collection?.runId??null);
+ const state=confirmedStop?{...liveState,running:false,emergencyStop:operatorReceipt,ai:{...liveState.ai,configured:false,mode:'study-stopped'}}:replay||liveState;
  useEffect(()=>{
   if(liveState?.ai.mode!=='budget-limit'){setRecording(null);setReplayError(false);return;}
   const controller=new AbortController();
@@ -45,6 +48,7 @@ export default function App(){
  const rows=state.flights.filter(f=>(filter==='all'||f.phase===filter)&&f.id.includes(search.toUpperCase()));
  return <div className="app-shell autonomous">
   <header className="topbar"><div className="brand">VECTOR</div><div className="brand-sub"><strong>TypeSafe ATC</strong><span>{t("100 UÇAK · OTONOM KONTROL DENEYİ")}</span></div><div className="header-spacer"/><select className="language-select" aria-label="Language / Dil" value={language} onChange={e=>setLanguage(e.target.value)}><option value="tr">Türkçe</option><option value="en">English</option></select><a className="report-link" href="/api/report" download>{t("Deney raporu ↓")}</a><div className="sim-clock"><label>{state.isReplay?(language==='en'?'REPLAY TIME':'TEKRAR ZAMANI'):t("DENEY ZAMANI · 1×")}</label><b>{clock(state.elapsed)}</b></div></header>
+  <EmergencyStopPanel key={state.experimentId} state={state} language={language} onStopped={setOperatorReceipt}/>
   <div className="toolbar"><div className="sector"><span className="section-label">{t("SEKTÖR")}</span><strong>{language==='en'?'Istanbul / LTFM south flow':'İstanbul / LTFM güney yönü'}</strong></div><div className="connection"><i className={error||stale?'offline':''}/>{error||stale?t("Bağlantı bekleniyor"):state.viewers+(state.studyStatus?(language==='en'?' viewers · independent collection':' izleyici · bağımsız veri toplama'):t(" aktif izleyici · boşken durur"))}</div><label className="ground-toggle"><input type="checkbox" checked={showGround} onChange={e=>setShowGround(e.target.checked)}/>{t("Yerdeki uçakları göster")}</label></div>
   <div className="traffic-stats" aria-label={state.isReplay?(language==='en'?'Live experiment counters, not replay counters':'Canlı deney sayaçları; tekrar sayılmaz'):undefined}>{[[t("UÇAK"),state.flights.length],[t("KALKIŞ / İNİŞ"),state.stats.takeoffs+' / '+state.stats.landings],[t("TAMAMLANAN"),state.stats.cycles],[t("ÇARPIŞMA"),state.stats.collisions],[t("YER TEMASI"),state.stats.groundImpacts],[t("KRİTİK YAKINLAŞMA"),state.stats.criticalEpisodes]].map(([label,value])=><div key={t(label)}><span>{t(label)}</span><strong>{value}</strong></div>)}</div>
   <div className={'experiment-banner '+(state.running?'':'paused')}>{state.isReplay?(language==='en'?'RECORDED REPLAY · AI limit reached · no AI calls':'KAYITTAN TEKRAR · AI limiti doldu · AI çağrısı yok'):state.running?t("TypeSafe komutları uygulanıyor"):t("Uçuşlar duraklatıldı · ")+({'input-too-large':t('AI girdi boyutu siniri'),'archive-error':t('Arsiv hatasi - deney durduruldu'),'study-stopped':t('Arastirma kosusu durduruldu'),'idle':t("izleyici bekleniyor"),'evaluating':t("filo kararları alınıyor"),'budget-limit':t("AI kullanım sınırı"),'backoff':t("AI yeniden deneme bekleniyor"),'disabled':t("AI bağlantısı kapalı")}[state.ai.mode]||t("sonraki kontrol bekleniyor"))}<span>{t("ATC düzeltmeleri yalnızca TypeSafe · model hataları ölçülür")}</span></div>

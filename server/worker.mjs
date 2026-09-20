@@ -1,3 +1,4 @@
+import {STOP_KEY,StopFenceError,stopTarget,stopRequested,assertNotStopped,serializeWrite,requestEmergencyStop,restoreEmergencyStop,settleStoppedDispatch,stopView,readStopTarget} from './emergency-stop.mjs';
 import {parseStudyManifest,initializeStudy,armStudy,studyStopReason,stopStudy,runtimeVersions,provenance,usesProviderBalance} from './study-run.mjs';
 import {MEASUREMENT_POLICY} from '../src/flight-events.mjs';
 import {ResearchJournal,ArchiveError} from './research-journal.mjs';
@@ -59,6 +60,13 @@ export class AirportSimulation extends DurableObject{
    await initializeStudy(this.record,manifest,Date.now());
    if(this.record.study){const limits=this.limits(),oldLimits=this.record.study.runtimeLimits;if(oldLimits&&JSON.stringify(oldLimits)!==JSON.stringify(limits))throw new Error('Frozen runtime limits changed');this.record.study.runtimeLimits=limits;}
 
+   const stopLatch=await ctx.storage.get(STOP_KEY);
+   if(stopLatch){
+    try{this.journal=await ResearchJournal.open(ctx.storage,journalMaxBytes);}catch(error){this.stopJournalError=error.code??'archive-open-failed';}
+    await restoreEmergencyStop(this,stopLatch);
+    this.presence=new Map(await ctx.storage.get('viewers-v3')||[]);this.totalVisits=await ctx.storage.get('total-visits')||0;
+    this.replay=await ReplayArchive.open(ctx.storage,this.record.sim.flights.map(f=>f.id));return;
+   }
    this.journal=await ResearchJournal.open(ctx.storage,journalMaxBytes);
    if(this.journal.meta.nextSequence===0)await this.persist(this.record,[{kind:'initial-state',sim:structuredClone(this.record.sim),versions:{prompt:TYPESAFE_PROMPT_VERSION,context:TYPESAFE_CONTEXT_VERSION,control:PILOT_CONTROL_POLICY,evaluation:EVALUATION_PROTOCOL},manifest:this.record.study?.manifest??null,evidenceClass:this.record.study?(this.record.study.manifest.evidenceClass??'live-study'):'live-demo',sourceProvenance:provenance,historicalBackfill:false}]);
    if(this.record.activeSourceFingerprint!==provenance.sourceFingerprint){const tagged=structuredClone(this.record);tagged.activeSourceFingerprint=provenance.sourceFingerprint;await this.persist(tagged,[{kind:'configuration',sourceProvenance:provenance,versions:runtimeVersions(),trafficScope:tagged.sim.trafficScope??'legacy-mixed-v1'}]);}
@@ -73,9 +81,11 @@ export class AirportSimulation extends DurableObject{
  }
  limits(){return {...DEFAULT_LIMITS,dailyTokens:dailyTokenLimit(this.env.AI_DAILY_TOKEN_LIMIT,usesProviderBalance(this.record?.study?.manifest)),hourlyRequests:safeInt(this.env.AI_HOURLY_REQUEST_LIMIT,720,1,720),intervalMs:safeInt(this.env.AI_INTERVAL_SECONDS,60,60,3600)*1000};}
  viewers(now=Date.now()){return [...this.presence.values()].filter(p=>p.active&&p.expires>now).length;}
- studyRunning(){return this.record.study?.status==='running';}
+ studyRunning(){return !stopRequested(this)&&this.record.study?.status==='running';}
+ async emergencyStopRun(target){return requestEmergencyStop(this,target);}
  async heartbeat(id,sequence,active){
   return this.ctx.blockConcurrencyWhile(async()=>{
+   if(stopRequested(this)||this.env.AI_ENABLED==='false'){await this.ctx.storage.deleteAlarm();return true;}
    const now=Date.now();
    for(const [key,p] of this.presence)if(p.expires<now-60000)this.presence.delete(key);
    const old=this.presence.get(id);
@@ -93,6 +103,7 @@ export class AirportSimulation extends DurableObject{
  }
  async armStudyRun(){
   return this.ctx.blockConcurrencyWhile(async()=>{
+   assertNotStopped(this);
    if(!this.record.study)throw new Error('No frozen study');
    if(this.env.AI_ENABLED==='false'||!this.env.TYPESAFE_API_KEY)throw new Error('Study AI is not configured');
    const now=Date.now(),next=structuredClone(this.record),armed=armStudy(next,now);
@@ -102,14 +113,14 @@ export class AirportSimulation extends DurableObject{
   });
  }
  async snapshot(){
-  const {sim,ai,budget}=this.record,viewers=this.viewers(),studyStatus=this.record.study?.status??null,studyRunning=studyStatus==='running',showMode=Boolean(viewers||studyRunning||['archive-error','input-too-large','study-stopped'].includes(ai.mode));
-  return {experimentId:this.record.startedAt,...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:1,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:this.record.study?studyRunning:Boolean(viewers&&ai.mode==='active'&&this.record.frameRemaining>0),studyStatus,collection:this.record.study?{runId:this.record.study.manifest.runId,evidenceClass:this.record.study.manifest.evidenceClass??'live-study',startedAt:this.record.study.startedAt,targetSimulatedSeconds:this.record.study.manifest.stopping.targetSimulatedSeconds,accountedInputTokens:this.record.study.accountedInputTokens,tokenBudgetPolicy:this.record.study.manifest.stopping.tokenBudgetPolicy??'fixed-input-cap'}:null,ai:{...ai,mode:showMode?ai.mode:'idle',configured:Boolean(this.env.TYPESAFE_API_KEY)&&this.env.AI_ENABLED!=='false',intervalSeconds:this.limits().intervalMs/1000,budget:{...budgetAt(budget,Date.now()),limit:this.limits().dailyTokens}}};
+  const {sim,ai,budget}=this.record,viewers=this.viewers(),studyStatus=this.record.study?.status??null,configured=Boolean(this.env.TYPESAFE_API_KEY)&&this.env.AI_ENABLED!=='false'&&!stopRequested(this),studyRunning=studyStatus==='running'&&configured,showMode=Boolean(viewers||studyRunning||['archive-error','input-too-large','study-stopped'].includes(ai.mode));
+  return {experimentId:this.record.startedAt,operatorTarget:stopTarget(this.record),emergencyStop:stopView(this),...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:1,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:this.record.study?studyRunning:Boolean(configured&&viewers&&ai.mode==='active'&&this.record.frameRemaining>0),studyStatus,collection:this.record.study?{runId:this.record.study.manifest.runId,evidenceClass:this.record.study.manifest.evidenceClass??'live-study',startedAt:this.record.study.startedAt,targetSimulatedSeconds:this.record.study.manifest.stopping.targetSimulatedSeconds,accountedInputTokens:this.record.study.accountedInputTokens,tokenBudgetPolicy:this.record.study.manifest.stopping.tokenBudgetPolicy??'fixed-input-cap'}:null,ai:{...ai,mode:showMode?ai.mode:'idle',configured,intervalSeconds:this.limits().intervalMs/1000,budget:{...budgetAt(budget,Date.now()),limit:this.limits().dailyTokens}}};
  }
  async replayData(page=0){return this.replay.read(page);}
  async captureReplay(sim){await this.replay.capture(sim);}
  async report(){
-  const journal=await this.journal.read(),result={researchJournal:journal,study:this.record.study??null,sourceProvenance:provenance,reset:await this.ctx.storage.get(RESET_RECEIPT),startedAt:this.record.startedAt,...experimentReport(this.record.sim,this.record.ai,this.record.budget)};
-  const covers=Number.isFinite(result.evaluation.coverage.startedAtSimSeconds)&&!journal.tailUncertain&&this.record.ai.mode!=='archive-error'&&journal.coverageStartSimSeconds<=result.evaluation.coverage.startedAtSimSeconds;
+  const journal=await this.researchData(),result={emergencyStop:stopView(this),researchJournal:journal,study:this.record.study??null,sourceProvenance:provenance,reset:await this.ctx.storage.get(RESET_RECEIPT),startedAt:this.record.startedAt,...experimentReport(this.record.sim,this.record.ai,this.record.budget)};
+  const covers=!this.stopJournalError&&Number.isFinite(result.evaluation.coverage.startedAtSimSeconds)&&!journal.tailUncertain&&this.record.ai.mode!=='archive-error'&&journal.coverageStartSimSeconds<=result.evaluation.coverage.startedAtSimSeconds;
   const reviewHash=this.record.study?.manifest.ruleReviewSha256,packetHash=this.record.study?.manifest.reviewPacketSha256,reviewed=Boolean(this.record.study?.manifest.independentRuleReview&&typeof reviewHash==='string'&&/^[a-f0-9]{64}$/.test(reviewHash)&&typeof packetHash==='string'&&/^[a-f0-9]{64}$/.test(packetHash));
   result.evaluation.dataAvailability.fullDecisionJournal=covers;result.evaluation.dataAvailability.fullIncidentJournal=covers;
   result.evaluation.dataAvailability.locallyFrozenRunManifest=Boolean(this.record.study);result.evaluation.dataAvailability.independentlyAdjudicatedLabels=reviewed;result.evaluation.dataAvailability.reviewPacketSha256=reviewed?packetHash:null;result.evaluation.dataAvailability.ruleReviewSha256=reviewed?reviewHash:null;result.evaluation.dataAvailability.journalScope='Since archive start; normalized replies, failure status, complete applied commands and events. Raw malformed provider bodies are not retained.';
@@ -117,31 +128,51 @@ export class AirportSimulation extends DurableObject{
   return result;
  }
  async persist(next,events=[]){
+  next=structuredClone(next);events=structuredClone(events);
+  return serializeWrite(this,()=>{assertNotStopped(this);return this.persistRaw(next,events);});
+ }
+ async persistRaw(next,events=[]){
   const previousRevision=this.record?.sim.revision;
   if(!events.length&&this.record?.ai.mode!==next.ai.mode)events=[{kind:'mode-transition',from:this.record?.ai.mode,to:next.ai.mode,reason:next.ai.stopReason??next.ai.budgetReason??null}];
   if(this.journal&&events.length)await this.journal.commit('airport-ltfm-v1',next,events);else await this.ctx.storage.put('airport-ltfm-v1',next);
   this.record=next;
   if(this.replay&&previousRevision!==next.sim.revision)await this.captureReplay(next.sim);
  }
- async researchData(entry=null,chunk=null){return this.journal.read(entry,chunk);}
+ async researchData(entry=null,chunk=null){
+  if(this.journal)return this.journal.read(entry,chunk);
+  if(entry!==null)throw new ArchiveError('archive-unavailable');
+  return {...await this.ctx.storage.get('research-journal-v1'),tailUncertain:true,unavailableReason:this.stopJournalError};
+ }
  async alarm(){
   // Coalesce re-entry before any storage await; a leave can still abort the active dispatch.
   if(this.alarmBusy){if(!this.studyRunning()&&!this.viewers())this.inFlight?.abort();return;}
   this.alarmBusy=true;
   try{return await this.runAlarm();}
   catch(error){
+   if(error instanceof StopFenceError||stopRequested(this)){
+    if(this.stopWork)await this.stopWork.catch(()=>{});
+    await this.ctx.storage.deleteAlarm().catch(()=>{});return;
+   }
    if(!(error instanceof ArchiveError))throw error;
-   const stopped=structuredClone(this.record);stopped.ai.mode='archive-error';stopped.ai.stopReason=error.code;stopped.frameRemaining=0;if(stopped.study){stopped.study.status='incomplete';stopped.study.stopReason=error.code;}
-   await this.ctx.storage.put('airport-ltfm-v1',stopped);this.record=stopped;await this.ctx.storage.deleteAlarm();
+   await serializeWrite(this,async()=>{
+    if(stopRequested(this))return;
+    const stopped=structuredClone(this.record);stopped.ai.mode='archive-error';stopped.ai.stopReason=error.code;stopped.frameRemaining=0;if(stopped.study){stopped.study.status='incomplete';stopped.study.stopReason=error.code;}
+    await this.ctx.storage.put('airport-ltfm-v1',stopped);this.record=stopped;await this.ctx.storage.deleteAlarm();
+   });
   }finally{this.alarmBusy=false;}
  }
  async runAlarm(){
+  assertNotStopped(this);
   const now=Date.now(),next=structuredClone(this.record),limits=this.limits(),journalEvents=[];
   if(['archive-error','study-stopped'].includes(next.ai.mode)||['archive-error','study-stopped'].includes(next.ai.waitMode)){await this.ctx.storage.deleteAlarm();return;}
   if(next.study?.status==='ready'){await this.ctx.storage.deleteAlarm();return;}
   const stopBefore=studyStopReason(next,now);if(stopBefore){stopStudy(next,stopBefore);await this.persist(next,[{kind:'study-stop',reason:stopBefore}]);await this.ctx.storage.deleteAlarm();return;}
   if(!next.study&&!this.viewers(now)){this.inFlight?.abort();next.paused=true;next.frameRemaining=0;if(next.ai.mode!=='idle')next.ai.waitMode=next.ai.mode;next.ai.mode='idle';next.sim.lastWall=now;await this.persist(next,journalEvents);await this.ctx.storage.deleteAlarm();return;}
+  if(this.env.AI_ENABLED==='false'||!this.env.TYPESAFE_API_KEY){
+   next.ai.mode='disabled';next.frameRemaining=0;await this.persist(next,journalEvents);await this.ctx.storage.deleteAlarm();return;
+  }
   await this.ctx.storage.setAlarm(now+2000);
+  assertNotStopped(this);
   if(this.inFlight||now<next.nextTick)return;
   if(next.ai.blockedRevision===next.sim.revision&&next.ai.blockedContextVersion===TYPESAFE_CONTEXT_VERSION){await this.ctx.storage.deleteAlarm();return;}
   if(next.paused){next.paused=false;next.sim.lastWall=now;next.ai.mode=['budget-limit','backoff','disabled','input-too-large','archive-error','study-stopped'].includes(next.ai.waitMode)?next.ai.waitMode:'awaiting';}
@@ -153,9 +184,6 @@ export class AirportSimulation extends DurableObject{
   const stopAfter=studyStopReason(next,now);if(stopAfter){stopStudy(next,stopAfter);journalEvents.push({kind:'study-stop',reason:stopAfter});await this.persist(next,journalEvents);await this.ctx.storage.deleteAlarm();return;}
   if(next.sim.trafficScope===AIRBORNE_SCOPE&&next.sim.requiresDecision){next.frameRemaining=0;next.ai.nextAt=0;next.ai.mode='awaiting';}
   next.sim.lastWall=now;next.nextTick=now+1500;
-  if(this.env.AI_ENABLED==='false'||!this.env.TYPESAFE_API_KEY){
-   next.ai.mode='disabled';next.frameRemaining=0;await this.persist(next,journalEvents);return;
-  }
   // Re-evaluate a blocked frame after a configured cap change; never reset spent tokens.
   const legacyBudgetWait=next.ai.mode==='awaiting'&&next.ai.budgetLimit===undefined&&next.ai.nextAt>now+limits.intervalMs;
   if((next.ai.mode==='budget-limit'||legacyBudgetWait)&&next.ai.budgetLimit!==limits.dailyTokens)next.ai.nextAt=0;
@@ -204,6 +232,7 @@ export class AirportSimulation extends DurableObject{
   journalEvents.push({kind:'dispatch-intent',plan:{revision:plan.revision,flights:plan.flights,runways:plan.runways},planRevision:plan.revision,trigger:plan.state.trigger,requests:requests.map(r=>JSON.stringify(r)),reservations});
   if(next.study)next.study.accountedInputTokens+=totalReserve;
   next.budget=reservation;next.ai.totalCalls+=requests.length;next.ai.mode='evaluating';if(!emergency)next.ai.nextAt=now+limits.intervalMs;await this.persist(next,journalEvents);
+  if(stopRequested(this))return settleStoppedDispatch(this,{reservation,reservations,planRevision:plan.revision,budgetBeforeDispatch,sent:false});
   if(!this.studyRunning()&&!this.viewers()){
    const cancelled=structuredClone(this.record);
    cancelled.budget=budgetAt(budgetBeforeDispatch,Date.now());cancelled.ai.totalCalls-=requests.length;
@@ -216,6 +245,8 @@ export class AirportSimulation extends DurableObject{
   const batchStart=Date.now();
   const outcomes=await Promise.allSettled(requests.map(request=>callTypeSafe(request,this.env.TYPESAFE_API_KEY,{signal:this.inFlight.signal})));
   this.inFlight=null;
+  try{
+  assertNotStopped(this);
   const settled=structuredClone(this.record);const outcomeEvents=[{kind:'dispatch-outcomes',planRevision:plan.revision,outcomes:outcomes.map(o=>o.status==='fulfilled'?{status:o.status,result:o.value}:{status:o.status,errorCode:o.reason?.code??'provider-or-contract-failure',httpStatus:o.reason?.status??null})}];
   outcomes.forEach((o,i)=>{if(o.status==='fulfilled')settled.budget=settleBudget(settled.budget,reservation,reservations[i],o.value.usage.input_tokens,Date.now());});
   if(settled.study)outcomes.forEach((o,i)=>{if(o.status==='fulfilled')settled.study.accountedInputTokens+=o.value.usage.input_tokens-reservations[i];});
@@ -255,6 +286,7 @@ export class AirportSimulation extends DurableObject{
   settled.ai.last={trigger:plan.state.trigger,telemetry:plan.state.aircraft,at:Date.now(),model:result.model,latencyMs:result.latencyMs,usage:result.usage,aircraft:plan.flights.length,questions:Object.keys(result.answers).length,...applied,evidence,decisions:plan.flights.map(f=>({flight:f.id,route:result.answers[f.id+'_route'].choice,altitude:result.answers[f.id+'_altitude'].choice,speed:result.answers[f.id+'_speed'].choice,rate:result.answers[f.id+'_rate'].choice,confidence:result.answers[f.id+'_route'].confidence}))};
   outcomeEvents.push({kind:'frame-result',planRevision:plan.revision,...applied,viewersPresent:Boolean(this.viewers())});
   await this.persist(settled,outcomeEvents);
+  }catch(error){if(!(error instanceof StopFenceError))throw error;await settleStoppedDispatch(this,{outcomes,reservation,reservations,planRevision:plan.revision,budgetBeforeDispatch,sent:true});}
  }
 }
 const headers={'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','Permissions-Policy':'camera=(), microphone=(), geolocation=()','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"};
@@ -275,7 +307,15 @@ export default{
  async fetch(request,env){
   const url=new URL(request.url);let response;
   try{
-   if(url.pathname==='/api/study/arm'&&request.method==='POST'){
+   if(url.pathname==='/api/operator/stop'&&request.method==='POST'){
+    if(request.headers.has('Origin')&&request.headers.get('Origin')!==url.origin)response=new Response('Forbidden',{status:403});
+    else if(!(await studyArmAuthorized(request,env)))response=new Response('Forbidden',{status:403});
+    else{
+     const target=await readStopTarget(request);
+     if(!target)response=new Response('Invalid stop target',{status:400});
+     else{const receipt=await env.AIRPORT.getByName(objectName(env)).emergencyStopRun(target);response=Response.json(receipt,{status:receipt.ok?200:409,headers:{'Cache-Control':'no-store'}});}
+    }
+   }else if(url.pathname==='/api/study/arm'&&request.method==='POST'){
     if(!env.RESEARCH_RUN_ID||!env.RUN_MANIFEST_JSON)response=new Response('Not found',{status:404});
     else if(!(await studyArmAuthorized(request,env)))response=new Response('Forbidden',{status:403});
     else response=Response.json(await env.AIRPORT.getByName(objectName(env)).armStudyRun(),{headers:{'Cache-Control':'no-store'}});
@@ -319,7 +359,7 @@ export default{
    }else if(url.pathname==='/api/health')response=Response.json({ok:true,version:'0.6.7'},{headers:{'Cache-Control':'no-store'}});
    else if(url.pathname==='/'||/^\/assets\/[a-zA-Z0-9._-]+\.(js|css|woff2?)$/.test(url.pathname))response=await env.ASSETS.fetch(request);
    else response=new Response('Not found',{status:404});
-  }catch{response=Response.json({error:'Sektör geçici olarak kullanılamıyor.'},{status:503});}
+  }catch(error){response=error?.name==='StopFenceError'?Response.json({error:'operator-stop-latched'},{status:409}):Response.json({error:'Sektör geçici olarak kullanılamıyor.'},{status:503});}
   const out=new Response(request.method==='HEAD'?null:response.body,response);
   for(const [k,v] of Object.entries(headers))out.headers.set(k,v);
   if(url.protocol==='https:')out.headers.set('Strict-Transport-Security','max-age=31536000');
