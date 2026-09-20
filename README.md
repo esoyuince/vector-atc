@@ -44,7 +44,7 @@ Optional HTTP checks: `node test/http-smoke.mjs http://127.0.0.1:5173`. This che
 
 Cloudflare Workers serves static assets. A Durable Object coordinates the experiment, viewer presence, token reservations and replay. Rate-limiter bindings need distinct namespace IDs within your account. Hosting and TypeSafe charges belong to the deployer's accounts; token limits are not an account-wide monetary cap. There is no automatic deployment workflow in this repository.
 
-## Current implementation (0.6.7)
+## Current implementation (0.6.8)
 
 New simulations use the synthetic distributed-flow-v1 scenario: 100 identities, initially 18 STAR arrivals, 6 approach flights and 12 SID departures; 64 identities are pending. Initial route progress, approach permissions and phase-dependent speed/altitude profiles are scenario inputs, never Jev commands. Subsequent arrivals use seeded 75–150 s demand gaps and departures 90–165 s; occupied entries defer admission without moving existing traffic. Profiles interpolate between source constraints instead of inventing targets at unconstrained arrival fixes. This is not measured or statistically calibrated LTFM demand. Existing stored scenarios are not redistributed. See [distributed traffic](docs/distributed-traffic-candidate.md).
 

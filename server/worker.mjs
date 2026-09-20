@@ -356,7 +356,7 @@ export default{
    }else if(url.pathname==='/api/report'){
     const {success}=await env.STATE_READ_LIMITER.limit({key:'vector-atc-report'});
     response=success?Response.json(await env.AIRPORT.getByName(objectName(env)).report(),{headers:{'Cache-Control':'no-store','Content-Disposition':'attachment; filename="vector-atc-report.json"'}}):new Response('Too many requests',{status:429});
-   }else if(url.pathname==='/api/health')response=Response.json({ok:true,version:'0.6.7'},{headers:{'Cache-Control':'no-store'}});
+   }else if(url.pathname==='/api/health')response=Response.json({ok:true,version:'0.6.8'},{headers:{'Cache-Control':'no-store'}});
    else if(url.pathname==='/'||/^\/assets\/[a-zA-Z0-9._-]+\.(js|css|woff2?)$/.test(url.pathname))response=await env.ASSETS.fetch(request);
    else response=new Response('Not found',{status:404});
   }catch(error){response=error?.name==='StopFenceError'?Response.json({error:'operator-stop-latched'},{status:409}):Response.json({error:'Sektör geçici olarak kullanılamıyor.'},{status:503});}
