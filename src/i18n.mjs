@@ -23,7 +23,7 @@ const english={
 "published altitude floor":"published altitude floor",
 "published altitude ceiling":"published altitude ceiling",
 "FAP level until crossing":"FAP level until crossing",
-"Yerel ATC yok. Pilot sayısal AI hedeflerini değiştirmez; prosedür ihlalleri ölçülür. Fizik sınırları korunur. AI beklenirken deney zamanı durur. Son izleyici ayrılınca en geç 20 saniyede uyur.":"No local ATC. Numeric AI targets are not replaced; procedure violations are measured. Physical limits remain. Simulation time pauses during AI calls and within 20 seconds of the last viewer leaving.",
+"Yerel ATC yok. Pilot sayısal AI hedeflerini değiştirmez; prosedür ihlalleri ölçülür. Fizik sınırları korunur. AI beklenirken son komut veya senaryo ön izni yürürlükte kalır. Son izleyici ayrılınca en geç 20 saniyede uyur.":"No local ATC. Numeric AI targets are not replaced; procedure violations are measured. Physical limits remain. While AI is pending, the last command or scenario prior clearance remains in force. The demo sleeps within 20 seconds after the last viewer leaves.",
 
  "Yayımlanmış LTFM rotaları · sentetik trafik · kaza sayıları gerçek dünya tahmini değildir":"Published LTFM routes · synthetic traffic · accident counts are not real-world forecasts",
  "Prosedür ihlali":"Procedure violation",
@@ -119,7 +119,7 @@ const english={
  "Giriş tokenı + belirsiz çağrı rezervi · ": "Input tokens + unknown-call reserve · ",
  " çağrı / saat": " requests / hour",
  "Deney olayları": "Experiment events",
- "Yerel ATC yok. Fizik motoru AI komutlarını yürütür; yakınlaşmaları ve kazaları kaydeder. AI beklenirken deney zamanı durur. Son izleyici ayrılınca en geç 20 saniyede uyur.": "No local ATC. Physics executes AI commands and records encounters and accidents. Simulation time pauses while awaiting AI. Viewer leases expire after 20 seconds.",
+ "Yerel ATC yok. Fizik motoru AI komutlarını yürütür; yakınlaşmaları ve kazaları kaydeder. AI beklenirken uçuşlar yürürlükteki komutla ilerler. Son izleyici ayrılınca en geç 20 saniyede uyur.": "No local ATC. Physics executes AI commands and records encounters and accidents. Flights continue under the command in force while awaiting AI. Viewer leases expire after 20 seconds.",
  "Sentetik sektör radarı": "Synthetic sector radar",
  "SİMÜLASYON AKTİF": "SIMULATION ACTIVE",
  "DURAKLATILDI": "PAUSED",

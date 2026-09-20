@@ -24,7 +24,7 @@ function decision(sim,{route='HOLD_ULQAL',altitude=4000,speed=195,rate=1000,clea
 const audit=sim=>experimentReport(sim,{},{}).commandAudit;
 test('out-of-procedure command is logged on receipt before an actual violation, without a veto',()=>{
  const {sim,f}=fixture(),d=decision(sim),raw=JSON.stringify(d.answers);
- assert.deepEqual(applyFleetDecision(sim,d.plan,d.answers),{applied:1,rejected:0});
+ const applied=applyFleetDecision(sim,d.plan,d.answers);assert.equal(applied.applied,1);assert.equal(applied.rejected,0);
  assert.equal(f.altitude,6000);assert.equal(f.command.altitude,4000);assert.equal(sim.stats.procedureViolations,0);
  const a=audit(sim);assert.equal(a.checkedCommands,1);assert.equal(a.procedureCommands,1);assert.equal(a.records.length,1);
  const entry=a.records[0],issue=entry.issues.find(i=>i.rule==='holding-minimum-altitude');
@@ -74,9 +74,11 @@ test('physics ticks, forecasts and report reads never duplicate a command log; e
  assert.notEqual(audit(sim).records[0].commandId,audit(sim).records[1].commandId);
  const reloaded=JSON.parse(JSON.stringify(sim));assert.deepEqual(audit(reloaded),audit(sim));
 });
-test('stale revision, stale generation and invalid option do not produce an executed procedure-command log',()=>{
- for(const kind of ['revision','generation','option']){
-  const {sim,f}=fixture(),d=decision(sim);if(kind==='revision')d.plan.revision--;else if(kind==='generation')d.plan.flights[0].generation--;else d.answers[f.id+'_altitude'].choice='999999';
+test('revision drift is measured while generation drift and invalid options remain rejected',()=>{
+ const live=fixture(),decisionAtSnapshot=decision(live.sim);live.sim.revision+=3;
+ const applied=applyFleetDecision(live.sim,decisionAtSnapshot.plan,decisionAtSnapshot.answers);assert.equal(applied.applied,1);assert.equal(audit(live.sim).checkedCommands,1);
+ for(const kind of ['generation','option','terminal']){
+  const {sim,f}=fixture(),d=decision(sim);if(kind==='generation')d.plan.flights[0].generation--;else if(kind==='option')d.answers[f.id+'_altitude'].choice='999999';else f.phase='landing';
   assert.equal(applyFleetDecision(sim,d.plan,d.answers).applied,0);assert.equal(audit(sim).checkedCommands,0);assert.equal(audit(sim).procedureCommands,0);
  }
 });

@@ -6,7 +6,7 @@ const approach=(a,b,step)=>a+Math.sign(b-a)*Math.min(Math.abs(b-a),step);
 // Generic transport-jet approximations, not aircraft performance/AFM data.
 export const PILOT_MODEL='transport-point-mass-v1';
 // Experimental execution policy, separate from the unchanged physical approximation.
-export const PILOT_CONTROL_POLICY='jev-command-observe-v1';
+export const PILOT_CONTROL_POLICY='jev-command-live-latency-v2';
 export function holdingSpeedLimit(fix,altitude){
  const h=AIRPORT.holds.find(h=>h.fix===fix);
  return h?.maxSpeed??(altitude<=6000?200:altitude<=14000?230:265);

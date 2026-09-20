@@ -11,7 +11,7 @@
   "versions": {
     "prompt": "jev-atc-airborne-observe-v2",
     "context": "compact-state-geometry-v3",
-    "control": "jev-command-observe-v1",
+    "control": "jev-command-live-latency-v2",
     "measurement": "swept-terminal-v2",
     "evaluation": "vector-observational-v3",
     "traffic": "distributed-flow-v1"

@@ -20,9 +20,9 @@ Default Worker scope is now airborne-handoff-v1. There are 100 identities, initi
 
 ## 2. Execution contract
 
-Execution policy: **jev-command-observe-v1**.
+Execution policy: **jev-command-live-latency-v2**.
 
-Schema-valid, current-revision commands retain their requested altitude, IAS and rate. A procedure conflict is logged but does not cause rejection, replacement with a safer target, automatic holding, implicit glide-path capture or local traffic avoidance. Aircraft can violate a procedure, collide or hit the simplified ground model. A command with no procedure finding can still cause a traffic conflict.
+Schema-valid commands for the same non-terminal aircraft generation retain their requested altitude, IAS and rate even when provider latency advances the simulation revision; that revision drift is measured. A procedure conflict is logged but does not cause rejection, replacement with a safer target, automatic holding, implicit glide-path capture or local traffic avoidance. Aircraft can violate a procedure, collide or hit the simplified ground model. A command with no procedure finding can still cause a traffic conflict.
 
 Physical response remains bounded: acceleration, bank/turn response, vertical acceleration and modeled rate limits remain. An unrealizable rate is reported separately from procedure findings. Numeric repair is not confused with ordinary response time. Lateral route execution, holding entries/timing, SID/missed-approach minimum-turn guidance and prescribed missed-approach-to-hold sequencing remain deterministic pilot behavior. This is not an entirely unfiltered actuator experiment.
 
@@ -72,7 +72,7 @@ Independently review detector definitions against source documents before freezi
 
 Report simulated and wall time separately. Physics substeps are <=1 simulated second. Pair contacts use simultaneous horizontal/vertical swept-segment intervals; measurement and terminal semantics are swept-terminal-v2. Normal horizon: 60 simulated seconds. Prediction: up to 120 seconds. Critical predictions within 45 seconds can trigger a request, subject to a 10-simulated-second cooldown and budget.
 
-Provider waits/failures, absent viewers and exhausted budgets pause simulated time. The system does not currently test airborne evolution during real network latency. Latency is a software metric, not demonstrated real-world reaction time.
+Provider wait time is part of the control experiment: simulated aircraft continue under the last applied command, or the scenario-defined prior clearance before their first Jev command. Each response records wall latency, request/response simulated time, decision age and application revision delta. Transient provider backoff also leaves prior clearances in force. Terminal provider/infrastructure stops, absent demo viewers and exhausted fixed budgets stop or pause according to the declared run policy. These timings are still synthetic accelerated simulation, not demonstrated real-world reaction time.
 
 Separation is horizontal <3 NM AND vertical <1000 ft; critical is <1 NM AND <500 ft. Pair episodes count on entry, not each tick, and can recur after recovery. Collision is <0.12 NM AND <150 ft, grouped into connected participants in a step. A three-aircraft group is one event, not three pair collisions. Collision groups take precedence over terminal landing/impact in the same step. Connected pairs within a substep form one group; a group is a discretized observation, not proof every member touched simultaneously. The 0.25/0.5/1-second constant-velocity regression checks this approximation.
 

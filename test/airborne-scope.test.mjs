@@ -13,7 +13,7 @@ test('fixed seed/gates/schedule reproduce and initial commands are not falsely a
  const a=createAirborneSimulation(0,42),b=createAirborneSimulation(0,42);assert.deepEqual(a,b);for(const f of a.flights)assert.equal(f.command,null);
  for(const f of a.flights.filter(f=>f.phase!=='pending'))assert.equal(f.progress[f.initialCondition.route],f.initialCondition.nextIndex);
 });
-test('handoff pauses evolution for a fresh decision rather than hovering silently to next timer',()=>{
+test('handoff requires a fresh decision while provider-wait mode may continue prior clearance',()=>{
  const s=createAirborneSimulation(0,42);advanceSimulation(s,10);assert.equal(s.elapsed,0);
  const p=makePlan(s);applyFleetDecision(s,p,answer(p));assert.equal(s.requiresDecision,false);
  const due=Math.min(...s.flights.filter(f=>f.phase==='pending').map(f=>f.releaseAt));

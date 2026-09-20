@@ -98,13 +98,12 @@ for(const reversed of [false,true])test('multiple runway choices are recorded wi
  const event=sim.events.find(e=>e.code==='multiple-runway-assignment');
  assert.ok(eventText(event.text,'en').startsWith('Conflicting runway clearances'));
 });
-test('new conflict counter handles legacy state and does not count single or stale decisions',()=>{
+test('new conflict counter handles legacy state and counts a revision-drift application once',()=>{
  const {sim,flight}=singleArrival();delete sim.stats.runwayAssignmentConflicts;
  let plan=makePlan(sim),response=responseFor(plan,{[flight.id+'_route']:'ILS_16R_GAZGE',runway_16R:flight.id});
  applyFleetDecision(sim,plan,response.answers);assert.equal(sim.stats.runwayAssignmentConflicts??0,0);
  flight.phase='arrival';plan=makePlan(sim);
  response=responseFor(plan,{[flight.id+'_route']:'ILS_18_GAZGE',...Object.fromEntries(plan.runways.map(r=>['runway_'+r.id,flight.id]))});
- const stale=structuredClone(plan);stale.revision--;
- assert.equal(applyFleetDecision(sim,stale,response.answers).applied,0);assert.equal(sim.stats.runwayAssignmentConflicts??0,0);
- applyFleetDecision(sim,plan,response.answers);assert.equal(sim.stats.runwayAssignmentConflicts,1);
+ const delayed=structuredClone(plan);delayed.revision--;
+ assert.equal(applyFleetDecision(sim,delayed,response.answers).applied,1);assert.equal(sim.stats.runwayAssignmentConflicts,1);
 });

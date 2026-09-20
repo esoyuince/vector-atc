@@ -107,5 +107,5 @@ test('actual speed and glide-path violations are measured without editing the ta
  [f.x,f.y]=offset(r.point,r.headingTrue+180,3);
  advanceSimulation(sim,1);assert.equal(f.pilot.targetAltitude,219);
  assert.ok(sim.incidents.some(i=>i.rule==='approach vertical path'&&i.command.altitude===219));
- const report=experimentReport(sim,{},{});assert.equal(report.pilotControlPolicy,'jev-command-observe-v1');
+ const report=experimentReport(sim,{},{});assert.equal(report.pilotControlPolicy,'jev-command-live-latency-v2');
 });

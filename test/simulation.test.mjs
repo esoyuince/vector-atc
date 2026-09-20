@@ -27,10 +27,11 @@ test('TypeSafe heading/altitude/speed/rate commands drive bounded physical movem
  assert.ok(f.x>1.8);assert.ok(Math.abs(f.y-20)<.01);assert.ok(f.altitude>6400&&f.altitude<6500);assert.ok(f.speed>220&&f.speed<240);assert.equal(f.verticalRate,1000);
  assert.equal(f.lastSource,'typesafe');assert.equal(f.command.altitude,8000);
 });
-test('stale generation/revision commands are rejected',()=>{
- const s=createSimulation(),c=commands(s);advanceSimulation(s,1);
- assert.equal(applyFleetDecision(s,c.plan,c.answers).applied,0);assert.ok(s.flights.every(f=>f.command===null));
- assert.equal(s.stats.rejected,100);
+test('revision drift applies while generation drift remains rejected',()=>{
+ const live=createSimulation(),c=commands(live);advanceSimulation(live,1);
+ assert.equal(applyFleetDecision(live,c.plan,c.answers).applied,100);assert.ok(live.flights.every(f=>f.command!==null));
+ const staleGeneration=createSimulation(),d=commands(staleGeneration);for(const f of d.plan.flights)f.generation--;
+ const rejected=applyFleetDecision(staleGeneration,d.plan,d.answers);assert.equal(rejected.applied,0);assert.equal(rejected.rejected,100);assert.ok(staleGeneration.flights.every(f=>f.command===null));
 });
 
 test('contradictory AI final clearance is executed and reported, never locally vetoed',()=>{

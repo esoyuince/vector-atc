@@ -7,7 +7,7 @@
   "studyDesign": "Single-arm, prespecified multi-run, budget-limited closed-loop software-system observation; no paid A/B required.",
   "targetScope": "Airborne control only; touchdown and documented departure exit may respawn after outcome measurement.",
   "currentScope": "Airborne-only runtime by default; explicit legacy test fixtures remain separately labeled.",
-  "executionPolicy": "jev-command-observe-v1",
+  "executionPolicy": "jev-command-live-latency-v2",
   "auditVersion": "command-constraint-v2",
   "units": {
     "command": "One schema-accepted aircraft route/altitude/IAS/rate bundle in one plan revision and aircraft generation.",

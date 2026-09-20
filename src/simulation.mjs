@@ -1,5 +1,5 @@
 import {emitObservation} from './observation-events.mjs';
-import {DISTRIBUTED_TRAFFIC,initializeDistributedTraffic,queueDistributedTraffic} from './traffic-scenario.mjs';
+import {DISTRIBUTED_TRAFFIC,initializeDistributedTraffic,queueDistributedTraffic,scenarioRouteProfile} from './traffic-scenario.mjs';
 import {AIRBORNE_SCOPE,TRAFFIC_POLICY,enableAirborneScope,queueDeparture,releaseDepartures,placeArrivalAtGate,upcomingHandoffs} from './traffic-lifecycle.mjs';
 import {MEASUREMENT_POLICY,SURFACE_MODEL,EXIT_POLICY,isAirborne,collisionParticipant,motionSnapshot,encounter,surfaceContact,exitCandidate} from './flight-events.mjs';
 import {pilotStep,advancePilotNavigation,trueAirspeed,PILOT_MODEL,PILOT_CONTROL_POLICY,holdingSpeedLimit,performanceProfile} from './pilot.mjs';
@@ -78,6 +78,7 @@ export function predictedConflicts(flights,horizon=120){
    if(f.forecastEnded)continue;
    if(f.phase==='landing'){const left=Math.max(0,2-(f.age||0));f.age=(f.age||0)+1;if(left<=1)contacts.set(f.id,{kind:'expiry',fraction:left});continue;}
    if(f.command){pilotStep(f,1);advancePilotNavigation(f,before.get(f.id));const contact=surfaceContact(f,before.get(f.id));if(contact)contacts.set(f.id,contact);}
+   else if(f.initialCondition?.route&&priorClearanceStep(f,1)){const contact=surfaceContact(f,before.get(f.id));if(contact)contacts.set(f.id,contact);}
   }
   sample(before,seconds,contacts);
   for(const [id,c] of contacts){const f=list.find(f=>f.id===id);Object.assign(f,c.point);if(c.kind==='landing'){f.phase='landing';f.age=0;}else f.forecastEnded=true;}
@@ -101,7 +102,6 @@ export function recordIncident(sim,type,ids,detail={}){
  sim.incidents.unshift(incident);sim.incidents=sim.incidents.slice(0,200);addEvent(sim,type+' · '+ids.join(' / '),'measurement',detail);
 }
 export function applyFleetDecision(sim,plan,answers){
- if(plan.revision!==sim.revision){sim.stats.rejected+=plan.flights.length;return {applied:0,rejected:plan.flights.length};}
  const clearances=new Map(),assignments=new Map();
  for(const r of plan.runways){
   const id=answers['runway_'+r.id]?.choice,c=r.choices.find(c=>c.id===id);if(!c)continue;
@@ -114,8 +114,8 @@ export function applyFleetDecision(sim,plan,answers){
  }
  let applied=0,rejected=0;
  for(const p of plan.flights){
-  const f=sim.flights.find(f=>f.id===p.id),route=answers[f.id+'_route']?.choice,altitude=Number(answers[f.id+'_altitude']?.choice),speed=Number(answers[f.id+'_speed']?.choice),rate=Number(answers[f.id+'_rate']?.choice);
-  if(f.generation!==p.generation||!Object.hasOwn(p.routes,route)||!ALTITUDES.includes(altitude)||!SPEEDS.includes(speed)||!RATES.includes(rate)){rejected++;continue;}
+  const f=sim.flights.find(f=>f.id===p.id);if(!f){rejected++;continue;}const route=answers[f.id+'_route']?.choice,altitude=Number(answers[f.id+'_altitude']?.choice),speed=Number(answers[f.id+'_speed']?.choice),rate=Number(answers[f.id+'_rate']?.choice);
+  if(f.generation!==p.generation||['landing','crashed','pending'].includes(f.phase)||!Object.hasOwn(p.routes,route)||!ALTITUDES.includes(altitude)||!SPEEDS.includes(speed)||!RATES.includes(rate)){rejected++;continue;}
   const clearance=clearances.get(f.id),procedure=PROCEDURES[route];
   if(clearance?.kind==='arrival')f.landingClearance=clearance.runway;
   if(procedure?.kind==='APP'&&f.landingClearance!==procedure.runway){
@@ -149,8 +149,19 @@ function crossing(sim,f,leg){
  const speed=leg.speed??leg.maxSpeed;
  if(speed&&(leg.speed?Math.abs(f.speed-speed)>5:f.speed>speed+5))violation(sim,f,'speed',{fix:leg.fix,actual:round(f.speed),required:leg.speed,max:leg.maxSpeed},f.command.route+':'+leg.fix);
 }
-function move(sim,f,dt){
- const c=f.command;if(!c||['taxi_out','crashed','landing'].includes(f.phase)){f.verticalRate=0;return;}
+function priorClearanceStep(f,dt){
+ const route=f.initialCondition?.route,p=route?PROCEDURES[route]:null;if(!p)return false;
+ const n=navigation(f,route,f.speed),index=Math.min(n.index,p.legs.length-1),profile=scenarioRouteProfile(p,f.lane)[index];
+ const point=n.points[index],distanceNm=Math.max(.1,Math.hypot(f.x-point[0],f.y-point[1])),groundSpeed=Math.max(100,f.groundSpeed||trueAirspeed(f.speed,f.altitude));
+ const difference=profile.altitude-f.altitude,required=Math.abs(difference)*groundSpeed/(distanceNm*60),rate=Math.max(500,Math.min(2500,Math.ceil(required/100)*100||500));
+ const previous=f.command,before=motionSnapshot(f);f.command={id:null,route,altitude:profile.altitude,speed:profile.speed,rate,navigation:n,source:'scenario-prior-clearance'};
+ try{pilotStep(f,dt);advancePilotNavigation(f,before);}finally{f.command=previous;}
+ if(f.pilot)f.pilot={...f.pilot,source:'scenario-prior-clearance',controlPolicy:'scenario-prior-clearance-v1'};
+ return true;
+}
+function move(sim,f,dt,allowPendingDecision=false){
+ const c=f.command;if(!c){if(allowPendingDecision&&isAirborne(f)&&priorClearanceStep(f,dt))return;f.verticalRate=0;return;}
+ if(['taxi_out','crashed','landing'].includes(f.phase)){f.verticalRate=0;return;}
  const n=c.navigation,r=RUNWAYS[f.lane],p=n.procedure?PROCEDURES[n.procedure]:null;
  const before=motionSnapshot(f);const point=pilotStep(f,dt);
  if(['SID','MISSED'].includes(p?.kind)&&f.phase!=='takeoff'&&f.altitude<p.minTurnAltitude&&Math.abs(((f.heading-r.headingTrue+540)%360)-180)>10)violation(sim,f,'altitude',{rule:'minimum turn altitude',required:p.minTurnAltitude,actual:round(f.altitude)},c.route+':turn');
@@ -208,10 +219,10 @@ function measurements(sim,before,contacts,dt){
  }
  sim.openRunway=occupied;
 }
-export function advanceSimulation(sim,seconds,{maxStepSeconds=1}={}){
+export function advanceSimulation(sim,seconds,{maxStepSeconds=1,allowPendingDecision=false}={}){
  if(!Number.isFinite(maxStepSeconds)||maxStepSeconds<=0||maxStepSeconds>1)throw new RangeError('maxStepSeconds must be in (0,1]');
  let remaining=Math.max(0,Math.min(seconds,CONTROL_SECONDS));
- if(sim.trafficScope===AIRBORNE_SCOPE&&sim.requiresDecision)return;
+ if(sim.trafficScope===AIRBORNE_SCOPE&&sim.requiresDecision&&!allowPendingDecision)return;
  while(remaining>1e-9){
   const dt=Math.min(maxStepSeconds,remaining),ordered=[...sim.flights].sort((a,b)=>a.id.localeCompare(b.id));
   const before=new Map(ordered.map(f=>[f.id,motionSnapshot(f)])),expired=new Set(),contacts=new Map();sim.elapsed+=dt;
@@ -219,7 +230,7 @@ export function advanceSimulation(sim,seconds,{maxStepSeconds=1}={}){
    f.age+=dt;if(['taxi_out','arrival'].includes(f.phase))f.wait+=dt;
    if(airborne(f))sim.stats.aircraftHours+=dt/3600;
    if(f.phase==='crashed'||f.phase==='landing'){if(f.age>=2)expired.add(f.id);continue;}
-   move(sim,f,dt);
+   move(sim,f,dt,allowPendingDecision);
    const r=RUNWAYS[f.lane];
    if(f.phase==='takeoff'&&f.altitude>r.elevation+50&&runwayPosition(f,r).along>=r.lengthM/1852){f.phase='departure';sim.stats.takeoffs++;sim.runways[f.lane].completed++;addEvent(sim,f.id+' kalktı','typesafe');}
    const contact=surfaceContact(f,before.get(f.id));if(contact)contacts.set(f.id,contact);
@@ -232,7 +243,7 @@ export function advanceSimulation(sim,seconds,{maxStepSeconds=1}={}){
    if(f.phase==='crashed'){if(expired.has(f.id)&&before.get(f.id).phase==='crashed')spawn(sim,f,false,false);continue;}
    const contact=contacts.get(f.id);
    if(contact){Object.assign(f,contact.point);f.age=0;
-    if(contact.kind==='landing'){sim.stats.landings++;sim.runways[f.lane].completed++;f.phase='landing';addEvent(sim,f.id+' touchdown','typesafe',{surface:contact.surface});}
+    if(contact.kind==='landing'){sim.stats.landings++;sim.runways[f.lane].completed++;f.phase='landing';addEvent(sim,f.id+' touchdown',f.command?'typesafe':'scenario',{surface:contact.surface,priorClearance:!f.command});}
     else{sim.stats.groundImpacts++;recordIncident(sim,'Yer teması',[f.id],{command:f.command,surface:contact.surface,surfaceElevationFt:contact.elevationFt,time:round(sim.elapsed-dt+contact.fraction*dt)});f.phase='crashed';}
     continue;
    }
@@ -245,7 +256,7 @@ export function advanceSimulation(sim,seconds,{maxStepSeconds=1}={}){
   }
   remaining-=dt;
   const released=releaseDepartures(sim);for(const id of released)addEvent(sim,id+' airborne handoff','scenario');
-  if(sim.trafficScope===AIRBORNE_SCOPE&&sim.requiresDecision)break;
+  if(sim.trafficScope===AIRBORNE_SCOPE&&sim.requiresDecision&&!allowPendingDecision)break;
  }
  sim.alerts=predictedConflicts(sim.flights);sim.revision++;
 }
