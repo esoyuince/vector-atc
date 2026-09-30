@@ -70,7 +70,7 @@ test('provider latency advances aircraft and delayed answers apply to matching g
  t.mock.method(globalThis,'fetch',async(_url,opts)=>{const request=JSON.parse(opts.body);h.calls.push(request);if(++started===expected)allStartedResolve();await gate;return Response.json(response(request));});
  const flight=c.record.sim.flights.find(f=>f.initialCondition?.route&&f.phase!=='pending'),before=[flight.x,flight.y],generation=flight.generation;
  await c.heartbeat('viewer',1,true);const pending=c.alarm();await allStarted;
- h.advance(1000);await new Promise(r=>setTimeout(r,220));
+ h.advance(1000);for(const deadline=performance.now()+5000;c.record.sim.elapsed===0&&performance.now()<deadline;)await new Promise(r=>setTimeout(r,25));
  assert.ok(c.record.sim.elapsed>0,'sim clock must advance before Jev replies');const live=c.record.sim.flights.find(f=>f.id===flight.id);
  assert.equal(live.generation,generation);assert.ok(Math.hypot(live.x-before[0],live.y-before[1])>0,'prior clearance must keep the aircraft moving');
  release();await pending;
@@ -129,13 +129,13 @@ for(const disconnect of ['explicit','expired'])test(disconnect+' last viewer dis
  assert.equal(aborted,expected);assert.equal(c.record.ai.mode,'idle');assert.equal(c.record.sim.stats.aiApplied,0);assert.equal(c.record.sim.elapsed,0);assert.equal(h.alarm(),null);
  assert.ok(c.record.budget.tokens>0,'unknown upstream charge remains reserved');
 });
-test('transient provider failure keeps prior clearance moving; partial usage settles and unknown charge stays reserved',async t=>{
+test('transient provider failure freezes physics during backoff; partial usage settles and unknown charge stays reserved',async t=>{
  const h=await harness(t),c=h.controller,expected=expectedFrameCalls(c);let index=0;
  t.mock.method(globalThis,'fetch',async(_url,opts)=>{index++;if(index===2)return new Response('private provider detail',{status:429});return Response.json(response(JSON.parse(opts.body)));});
  await c.heartbeat('viewer',1,true);await c.alarm();
  assert.equal(c.record.ai.mode,'backoff');assert.equal(c.record.frameRemaining,0);assert.equal(c.record.sim.stats.aiApplied,0);
  assert.ok(c.record.budget.tokens>(expected-1)*1000);assert.equal(c.record.budget.actualTokens,(expected-1)*1000);
- h.advance(5000);await c.alarm();assert.equal(c.record.sim.elapsed,3);assert.equal(c.record.frameRemaining,0);assert.equal(index,expected);
+ h.advance(5000);await c.alarm();assert.equal(c.record.sim.elapsed,0,'provider-failure backoff is not simulated exposure');assert.equal(c.record.frameRemaining,0);assert.equal(index,expected);
 });
 test('budget refuses an entire fleet frame before any outbound request; disabled AI also freezes',async t=>{
  const h=await harness(t,new Map(),{AI_DAILY_TOKEN_LIMIT:'10000'}),c=h.controller;
@@ -198,7 +198,7 @@ test('latest decision evidence retains all normalized judgments and runway order
  });
  await c.heartbeat('viewer',1,true);await c.alarm();
  const evidence=c.record.ai.last.evidence;
- assert.ok(evidence);assert.equal(evidence.version,2);assert.equal(evidence.planRevision,0);assert.equal(evidence.requestSimSeconds,0);assert.equal(evidence.responseSimSeconds,0);assert.equal(evidence.decisionAgeSimSeconds,0);assert.equal(evidence.applicationRevisionDelta,0);
+ assert.ok(evidence);assert.equal(evidence.version,3);assert.equal(evidence.planRevision,0);assert.equal(evidence.requestSimSeconds,0);assert.equal(evidence.responseSimSeconds,0);assert.equal(evidence.decisionAgeSimSeconds,0);assert.equal(evidence.applicationRevisionDelta,0);
  assert.equal(Object.keys(evidence.answers).length,403);
  assert.deepEqual(evidence.runwayOrder,['16R','17L','18']);
  assert.equal(evidence.runwayConflictResolution,'last-in-plan-order');
@@ -304,7 +304,7 @@ test('evaluation export and request fingerprints persist without extra inference
  await c.heartbeat('viewer',1,true);await c.alarm();
  const e=c.record.ai.last.evidence,report=await c.report();
  assert.equal(e.evaluationProtocol,report.evaluation.protocolId);assert.equal(report.evaluation.commands.checkedCommands,100);
- assert.equal(e.promptVersion,'jev-atc-airborne-observe-v2');assert.equal(e.contextVersion,'compact-state-geometry-v3');assert.equal(e.requests.length,h.calls.length);
+ assert.equal(e.promptVersion,'jev-atc-airborne-observe-v3');assert.equal(e.contextVersion,'compact-state-geometry-v4');assert.equal(e.requests.length,h.calls.length);
  e.requests.forEach((b,index)=>{assert.equal(b.requestSha256,createHash('sha256').update(JSON.stringify(h.calls[index])).digest('hex'));assert.equal(b.requestedModel,h.calls[index].model);assert.equal(b.returnedModel,'jev-1.13.0');assert.equal(b.inputTokens,1000);});
  assert.equal(JSON.stringify(report).includes('fixture-only'),false);
  const before=structuredClone(report.evaluation),reloaded=await harness(t,h.stored);
@@ -499,10 +499,10 @@ for(const previousDataset of ['LTFM-SOUTH-v1','LTFM-SOUTH-v2'])test('dataset '+p
  const report=await next.report();assert.equal(report.dataset.id,'LTFM-SOUTH-v3');assert.equal(report.dataEpochStats.collisions,0);
 });
 
-async function collectionFixture(t,stored){
+async function collectionFixture(t,stored,overrides={},runtime={simSpeed:1}){
  const {createAirborneSimulation}=await import('../src/simulation.mjs'),{initialStateFingerprint,runtimeVersions,provenance}=await import('../server/study-run.mjs');
- const m={status:'frozen-local',executionStartPolicy:'explicit-operator-arm-v1',runId:'uncapped-fixture',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),evidenceClass:'live-unreviewed-collection',independentRuleReview:false,preregistered:false,stopping:{targetSimulatedSeconds:7200,maxWallSeconds:null,maxTotalInputTokens:null,tokenBudgetPolicy:'provider-balance-v1',stopForFavorableResults:false}};
- return harness(t,stored??new Map(),{SIM_SCOPE:'airborne-only',RESEARCH_RUN_ID:m.runId,RUN_MANIFEST_JSON:JSON.stringify(m),AI_DAILY_TOKEN_LIMIT:'provider-balance'});
+ const m={status:'frozen-local',executionStartPolicy:'explicit-operator-arm-v1',runId:'uncapped-fixture',scope:'airborne-handoff-v1',seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(createAirborneSimulation(0,42)),evidenceClass:'live-unreviewed-collection',independentRuleReview:false,preregistered:false,stopping:{targetSimulatedSeconds:7200,maxWallSeconds:null,maxTotalInputTokens:null,tokenBudgetPolicy:'provider-balance-v1',stopForFavorableResults:false},runtime};
+ return harness(t,stored??new Map(),{SIM_SCOPE:'airborne-only',RESEARCH_RUN_ID:m.runId,RUN_MANIFEST_JSON:JSON.stringify(m),AI_DAILY_TOKEN_LIMIT:'provider-balance',...overrides});
 }
 test('uncapped collection remains ready until arm and records true policy without viewers',async t=>{
  const h=await collectionFixture(t),c=h.controller;await c.alarm();assert.equal(h.calls.length,0);assert.equal(c.record.study.status,'ready');
@@ -518,15 +518,30 @@ test('payment refusal stops collection once, never retries or resets credits',as
 });
 test('collection waits on transient overload and resumes the unchanged state',async t=>{
  const h=await collectionFixture(t),c=h.controller;let overload=true;t.mock.method(globalThis,'fetch',async(_url,opts)=>overload?new Response('',{status:529}):Response.json(response(JSON.parse(opts.body))));
- await c.armStudyRun();await c.alarm();assert.equal(c.record.ai.mode,'backoff');assert.equal(c.record.study.status,'running');assert.equal(c.record.sim.elapsed,0);assert.equal(c.record.ai.frames,0);assert.equal(c.record.frameRemaining,0);const callsBeforeRetry=h.calls.length;h.advance(2000);await c.alarm();assert.equal(h.calls.length,callsBeforeRetry);assert.equal(c.record.ai.mode,'backoff');assert.ok(c.record.sim.elapsed>0);
- overload=false;h.advance(61000);await c.alarm();assert.equal(c.record.ai.mode,'active');assert.equal(c.record.ai.frames,1);assert.equal(c.record.sim.elapsed,5);
+ await c.armStudyRun();await c.alarm();assert.equal(c.record.ai.mode,'backoff');assert.equal(c.record.study.status,'running');assert.equal(c.record.sim.elapsed,0);assert.equal(c.record.ai.frames,0);assert.equal(c.record.frameRemaining,0);const callsBeforeRetry=h.calls.length;h.advance(2000);await c.alarm();assert.equal(h.calls.length,callsBeforeRetry);assert.equal(c.record.ai.mode,'backoff');assert.equal(c.record.sim.elapsed,0);
+ overload=false;h.advance(61000);await c.alarm();assert.equal(c.record.ai.mode,'active');assert.equal(c.record.ai.frames,1);assert.equal(c.record.sim.elapsed,0,'the retried frame starts from the unchanged frozen state');
 });
 test('collection overload retries are bounded and never apply a failed frame',async t=>{
  const h=await collectionFixture(t),c=h.controller;t.mock.method(globalThis,'fetch',async()=>new Response('',{status:429}));
  await c.armStudyRun();for(let attempt=0;attempt<7;attempt++){await c.alarm();h.advance(601000);}
- assert.equal(c.record.study.status,'incomplete');assert.equal(c.record.study.stopReason,'provider-or-contract-failure');assert.equal(c.record.ai.frames,0);assert.ok(c.record.sim.elapsed>0,'transient retry waits must not freeze simulated time');assert.equal(h.alarm(),null);
+ assert.equal(c.record.study.status,'incomplete');assert.equal(c.record.study.stopReason,'provider-or-contract-failure');assert.equal(c.record.ai.frames,0);assert.equal(c.record.sim.elapsed,0,'transient retry waits freeze simulated time');assert.equal(h.alarm(),null);
 });
 
+test('a frozen collection refuses to load when the deployed SIM_SPEED differs from its manifest',async t=>{
+ await assert.rejects(collectionFixture(t,undefined,{SIM_SPEED:'10'}),/Frozen simulation speed mismatch/);
+ await assert.rejects(collectionFixture(t,undefined,{SIM_SPEED:'2'},{simSpeed:1}),/Frozen simulation speed mismatch/);
+ const h=await collectionFixture(t,undefined,{SIM_SPEED:'2'},{simSpeed:2});assert.equal(h.controller.record.study.status,'ready');
+});
+test('requests declare the expected decision delay measured from completed frames',async t=>{
+ const h=await harness(t),c=h.controller;
+ t.mock.method(globalThis,'fetch',async(_url,opts)=>{h.calls.push(JSON.parse(opts.body));h.advance(4000);return Response.json(response(h.calls.at(-1)));});
+ await c.heartbeat('viewer',1,true);await c.alarm();
+ const first=h.calls[0].state.timing;assert.equal(first.expectedDecisionDelaySimSeconds,null);assert.equal(first.basis,'no-completed-frame');assert.equal(first.simSpeed,1);assert.equal(first.snapshotSimSeconds,0);
+ assert.ok(c.record.ai.recentLatencyMs.length===1&&c.record.ai.recentLatencyMs[0]>=4000*(h.calls.length));
+ const before=h.calls.length;h.advance(2000);await c.heartbeat('viewer',2,true);c.record.frameRemaining=0;c.record.ai.nextAt=0;await c.alarm();
+ const later=h.calls[before].state.timing;assert.equal(later.basis,'median-recent-frame-latency');assert.equal(later.expectedDecisionDelaySimSeconds,Math.round(c.record.ai.recentLatencyMs[0]/100)/10);
+ assert.match(h.calls[before].state.policy,/state\.timing/);
+});
 const operatorTarget=c=>({runId:c.record.study?.manifest.runId??null,experimentId:c.record.startedAt});
 const emergencyStop=c=>c.emergencyStopRun(operatorTarget(c));
 test('operator stop is durable, idempotent and cannot be undone by arm, viewers or alarm retry',async t=>{

@@ -29,7 +29,8 @@
     "verify:aviation-values": "python scripts/verify-aviation-values.py",
     "verify:data": "python scripts/build-ltfm-data.py --check",
     "test:data-generator": "python -m unittest discover -s test -p data_generator_test.py",
-    "stop:study": "node scripts/stop-study.mjs"
+    "stop:study": "node scripts/stop-study.mjs",
+    "accept:workerd": "node scripts/workerd-acceptance.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

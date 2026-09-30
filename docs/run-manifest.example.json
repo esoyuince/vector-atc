@@ -9,15 +9,19 @@
   "sourceCommit": null,
   "sourceTree": null,
   "versions": {
-    "prompt": "jev-atc-airborne-observe-v2",
-    "context": "compact-state-geometry-v3",
+    "prompt": "jev-atc-airborne-observe-v3",
+    "context": "compact-state-geometry-v4",
     "control": "jev-command-live-latency-v2",
     "measurement": "swept-terminal-v2",
     "evaluation": "vector-observational-v3",
-    "traffic": "distributed-flow-v1"
+    "traffic": "distributed-flow-v1",
+    "providerWait": "live-latency-failure-paused-v1"
   },
   "requestedModel": "jev-1.13.0",
   "initialStateSha256": null,
+  "runtime": {
+    "simSpeed": 1
+  },
   "stopping": {
     "targetSimulatedSeconds": null,
     "maxWallSeconds": null,

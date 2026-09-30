@@ -4,7 +4,7 @@ import {parseStudyManifest,initializeStudy,armStudy,studyStopReason,runtimeVersi
 import {createAirborneSimulation} from '../src/simulation.mjs';import {AIRBORNE_SCOPE} from '../src/traffic-lifecycle.mjs';
 import {callTypeSafe} from '../server/typesafe.mjs';
 async function fixture(){const sim=createAirborneSimulation(0,42),record={sim,ai:{totalCalls:0}};
- const m={status:'frozen-local',executionStartPolicy:'explicit-operator-arm-v1',runId:'collection-fixture',scope:AIRBORNE_SCOPE,seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(sim),evidenceClass:'live-unreviewed-collection',stopping:{targetSimulatedSeconds:7200,maxWallSeconds:null,maxTotalInputTokens:null,tokenBudgetPolicy:'provider-balance-v1',stopForFavorableResults:false},independentRuleReview:false,preregistered:false};return {record,m};}
+ const m={status:'frozen-local',executionStartPolicy:'explicit-operator-arm-v1',runId:'collection-fixture',scope:AIRBORNE_SCOPE,seed:42,sourceFingerprint:provenance.sourceFingerprint,versions:runtimeVersions(),requestedModel:'jev-1.13.0',initialStateSha256:await initialStateFingerprint(sim),evidenceClass:'live-unreviewed-collection',stopping:{targetSimulatedSeconds:7200,maxWallSeconds:null,maxTotalInputTokens:null,tokenBudgetPolicy:'provider-balance-v1',stopForFavorableResults:false},runtime:{simSpeed:1},independentRuleReview:false,preregistered:false};return {record,m};}
 test('provider balance is explicit, frozen and never enabled by missing/invalid config',()=>{
  assert.equal(dailyTokenLimit('provider-balance',true),null);
  assert.throws(()=>dailyTokenLimit('provider-balance'),/explicit frozen/);
@@ -27,7 +27,7 @@ test('provider balance keeps exposure stop but has no daily/total/wall ceiling',
 });
 test('uncapped collection cannot silently become a reviewed or capped study',async()=>{
  const {m}=await fixture();
- for(const change of [{evidenceClass:'live-study'},{independentRuleReview:true},{preregistered:true},{studyPlan:{}},{stopping:{...m.stopping,tokenBudgetPolicy:'unknown'}},{stopping:{...m.stopping,maxTotalInputTokens:100000}},{stopping:{...m.stopping,maxWallSeconds:60}},{stopping:{...m.stopping,targetSimulatedSeconds:0}}])assert.throws(()=>parseStudyManifest({...m,...change}));
+ for(const change of [{evidenceClass:'live-study'},{independentRuleReview:true},{preregistered:true},{studyPlan:{}},{stopping:{...m.stopping,tokenBudgetPolicy:'unknown'}},{stopping:{...m.stopping,maxTotalInputTokens:100000}},{stopping:{...m.stopping,maxWallSeconds:60}},{stopping:{...m.stopping,targetSimulatedSeconds:0}},{runtime:undefined},{runtime:{simSpeed:0}},{runtime:{simSpeed:21}},{runtime:{simSpeed:1.5}},{runtime:{simSpeed:1,extra:true}}])assert.throws(()=>parseStudyManifest({...m,...change}));
  assert.throws(()=>parseStudyManifest({...m,stopping:{...m.stopping,tokenBudgetPolicy:undefined}}));
 });
 test('payment-required is terminal typed evidence with no secret body retention',async()=>{

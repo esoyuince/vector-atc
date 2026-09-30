@@ -17,7 +17,7 @@ Status: implemented locally; synthetic tests, not a completed Jev study or deplo
 - Legacy seeded-gates-v2 arrivals use seeded upstream scatter around the first STAR fix, conditioned on staying at least 0.5 NM inside the 110 NM scenario boundary (seeded-gates-v2). Up to 200 proposals are tried. Boundary rejections, unresolved separation and any fallback to the sourced entry fix are explicitly recorded. This is scenario admission, not a correction to Jev commands.
 - Legacy departures are scenario-injected at the first SID fix, 180 kt, altitude max(first-leg minimum, threshold elevation +1500 ft), every 60 simulated seconds globally. This is not simulated ground control or a claim of real runway capacity.
 - Legacy initial pool: 50 arrivals, 50 departure identities; one departure is initially released, 49 are pending. Additional departure decisions appear only after release.
-- New handoffs and Jev provider waits do not pause global simulated time. Until a fresh Jev command arrives, an aircraft continues its last applied command; before its first Jev command it follows the scenario-defined prior route/profile as a prior clearance, not a model decision. A response is applied only to matching non-terminal aircraft generations, and its request/response simulated timestamps, decision age and application revision delta are retained. This exposes model/provider latency to the simulated traffic instead of freezing the world.
+- New handoffs and Jev provider waits do not pause global simulated time. Until a fresh Jev command arrives, an aircraft continues its last applied command; before its first Jev command it follows the scenario-defined prior route/profile as a prior clearance, not a model decision. A response is applied only to matching non-terminal aircraft generations, and its request/response simulated timestamps, decision age and application revision delta are retained. This exposes model/provider latency to the simulated traffic instead of freezing the world. Provider-failure backoff is different: physics is frozen until the retried frame returns (`providerWait: live-latency-failure-paused-v1`).
 - Aircraft performance estimates remain generic, no wind/wake/terrain. Extra guidance values are estimates, never synthesized clearances.
 
 ## Retention and failures
@@ -29,7 +29,7 @@ Each new checkpoint labels its digest version sim-core-state-v2. It covers the s
 
 ## Local freeze/export workflow
 1. Run npm test and npm run build. Build refreshes source/test/data fingerprints.
-2. Run node scripts/freeze-run.mjs OUTSIDE_REPO.json RUN_ID SEED SIM_SECONDS WALL_SECONDS INPUT_TOKEN_CAP.
+2. Run node scripts/freeze-run.mjs OUTSIDE_REPO.json RUN_ID SEED SIM_SECONDS WALL_SECONDS INPUT_TOKEN_CAP [SIM_SPEED].
 3. Review the manifest and independent rule adjudication. Local freezing is NOT external preregistration.
 4. Only after approval, configure RUN_MANIFEST_JSON and matching RESEARCH_RUN_ID for a new study Durable Object. No deployment is performed by the script.
 5. Export with node scripts/export-research.mjs BASE_URL NEW_OUTPUT_DIRECTORY. It does not register viewers or request inference.

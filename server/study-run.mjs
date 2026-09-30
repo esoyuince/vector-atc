@@ -7,7 +7,9 @@ import {AIRBORNE_SCOPE,TRAFFIC_POLICY} from '../src/traffic-lifecycle.mjs';
 import {EVALUATION_PROTOCOL} from '../src/evaluation.mjs';
 export const usesProviderBalance=m=>m?.stopping?.tokenBudgetPolicy==='provider-balance-v1';
 export const STUDY_START_POLICY='explicit-operator-arm-v1';
-export const runtimeVersions=()=>({prompt:TYPESAFE_PROMPT_VERSION,context:TYPESAFE_CONTEXT_VERSION,control:PILOT_CONTROL_POLICY,measurement:MEASUREMENT_POLICY,evaluation:EVALUATION_PROTOCOL,traffic:TRAFFIC_POLICY.id});
+// Provider latency is live simulated time; provider-failure backoff freezes physics.
+export const PROVIDER_WAIT_POLICY='live-latency-failure-paused-v1';
+export const runtimeVersions=()=>({prompt:TYPESAFE_PROMPT_VERSION,context:TYPESAFE_CONTEXT_VERSION,control:PILOT_CONTROL_POLICY,measurement:MEASUREMENT_POLICY,evaluation:EVALUATION_PROTOCOL,traffic:TRAFFIC_POLICY.id,providerWait:PROVIDER_WAIT_POLICY});
 export const initialStateFingerprint=sim=>sha256(JSON.stringify({seed:sim.initialSeed,flights:sim.flights,runways:sim.runways}));
 export function parseStudyManifest(text){
  if(!text)return null;const m=typeof text==='string'?JSON.parse(text):structuredClone(text);
@@ -17,6 +19,7 @@ export function parseStudyManifest(text){
  if(m.sourceFingerprint!==provenance.sourceFingerprint||(!m.versions||Object.keys(m.versions).length!==Object.keys(runtimeVersions()).length||Object.entries(runtimeVersions()).some(([k,v])=>m.versions[k]!==v)))throw Error('Frozen source or versions mismatch');
  if(!/^[a-f0-9]{64}$/.test(m.initialStateSha256)||typeof m.requestedModel!=='string'||m.requestedModel.length>80)throw Error('Invalid frozen provenance');
  const providerBalance=usesProviderBalance(m);
+ if((m.runtime!==undefined||providerBalance)&&(!m.runtime||typeof m.runtime!=='object'||Object.keys(m.runtime).join()!=='simSpeed'||!Number.isSafeInteger(m.runtime.simSpeed)||m.runtime.simSpeed<1||m.runtime.simSpeed>20))throw Error('Invalid frozen runtime speed');
  if(m.stopping?.tokenBudgetPolicy!==undefined&&!providerBalance)throw Error('Invalid token budget policy');
  if(providerBalance&&(m.stopping.maxTotalInputTokens!==null||m.stopping.maxWallSeconds!==null||m.evidenceClass!=='live-unreviewed-collection'||m.independentRuleReview!==false||m.preregistered!==false||m.studyPlan))throw Error('Invalid provider-balance collection');
  for(const k of (providerBalance?['targetSimulatedSeconds']:['targetSimulatedSeconds','maxWallSeconds','maxTotalInputTokens']))if(!Number.isSafeInteger(m.stopping?.[k])||m.stopping[k]<=0)throw Error('Invalid stop rule '+k);

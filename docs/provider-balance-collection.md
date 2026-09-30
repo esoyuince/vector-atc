@@ -12,7 +12,7 @@ evidenceClass=live-unreviewed-collection, independentRuleReview=false and prereg
 AI_DAILY_TOKEN_LIMIT=provider-balance is allowed only for that exact manifest. Missing or invalid ordinary settings do not enable it.
 Daily/total local input-token ceilings are absent, rather than replaced by a large number. Accounting and request-size/hourly controls remain.
 The run stops at its target exposure, HTTP 402 payment refusal, non-retriable provider/contract failure, exhausted transient retries or archive failure.
-HTTP 429/529 responses allow at most six exponential-backoff retries (60 to 600 seconds); failed frames do not advance physics or apply commands.
+HTTP 429/529 responses allow at most six exponential-backoff retries (60 to 600 seconds); failed frames do not apply commands, and physics stays frozen during the backoff wait. Normal provider latency still advances physics at the frozen SIM_SPEED.
 If a frame mixes successful and retryable failed batches, its successful responses are archived but unapplied; retry repeats the complete frozen frame.
 Uncertain failed-call reservations stay visible. A restart with an unresolved dispatch stops; no blind retry of uncertain work is introduced.
 No credit purchase or automatic-top-up change is performed. Actual balance and provider auto-recharge settings are not verified by this feature.
@@ -20,7 +20,9 @@ The provider enforces available credit; this is not an independent account-wide 
 
 ## Operation
 
-Commit and verify the exact source; run `node --import ./scripts/offline-guard.mjs scripts/freeze-collection.mjs OUT RUN_ID 7200`.
+Commit and verify the exact source; run `node --import ./scripts/offline-guard.mjs scripts/freeze-collection.mjs OUT RUN_ID 7200 SIM_SPEED`.
+Use SIM_SPEED 1 for evaluated collection; it is written to `runtime.simSpeed` and a deployment with a different SIM_SPEED refuses to load.
+Before deploying, run `npm run build && npm run accept:workerd -- OUT` to load the manifest under local workerd without a provider key.
 The CLI derives one seed from the run ID without filtering observed outcomes. Preserve all failed runs under their original identity.
 Set the matching manifest/run ID, 1000000000-byte journal capacity, pinned model, provider-balance daily policy and AI enabled.
 Store a high-entropy STUDY_ARM_TOKEN as a deployment secret. Before arm, state must remain ready with zero progress even with viewers.

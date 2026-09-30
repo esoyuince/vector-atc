@@ -7,6 +7,11 @@ test('frozen manifests reject source, version, seed, stop or initial-state drift
  for(const change of [{sourceFingerprint:'a'.repeat(64)},{seed:-1},{versions:{...m.versions,prompt:'unknown'}},{stopping:{...m.stopping,maxWallSeconds:0}},{stopping:{...m.stopping,stopForFavorableResults:true}}])assert.throws(()=>parseStudyManifest({...m,...change}));
  await assert.rejects(initializeStudy(record,{...m,initialStateSha256:'b'.repeat(64)},0));await initializeStudy(record,m,0);await assert.rejects(initializeStudy(record,{...m,runId:'another'},1));
 });
+test('runtime versions declare the provider-wait policy and optional runtime speed is validated',async()=>{
+ assert.equal(runtimeVersions().providerWait,'live-latency-failure-paused-v1');
+ const {m}=await fixture();assert.deepEqual(parseStudyManifest({...m,runtime:{simSpeed:3}}).runtime,{simSpeed:3});
+ for(const runtime of [{simSpeed:0},{simSpeed:'1'},{},null])assert.throws(()=>parseStudyManifest({...m,runtime}),/runtime/);
+});
 test('stopping is exposure/wall/budget based, never outcome dependent',async()=>{
  const {record,m}=await fixture();await initializeStudy(record,m,1000);record.sim.stats.collisions=99;assert.equal(record.study.status,'ready');assert.equal(studyStopReason(record,61000),null);assert.equal(armStudy(record,1000),true);assert.equal(record.study.status,'running');assert.equal(armStudy(record,1001),false);assert.equal(studyStopReason(record,1001),null);
  assert.equal(studyStopReason(record,61000),'wall-time');assert.equal(studyStopReason(record,2000,10001),'input-budget');record.sim.elapsed=30;assert.equal(studyStopReason(record,2000),'target-exposure');stopStudy(record,'target-exposure');assert.equal(record.study.status,'completed');assert.equal(record.frameRemaining,0);

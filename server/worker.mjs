@@ -19,7 +19,7 @@ const safeInt=(value,fallback,min,max)=>{const n=Number(value);return Number.isS
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 export class AirportSimulation extends DurableObject{
  constructor(ctx,env){
-  super(ctx,env);const manifest=parseStudyManifest(env.RUN_MANIFEST_JSON),journalMaxBytes=safeInt(env.RESEARCH_JOURNAL_MAX_BYTES,64*1024*1024,1000000,1000000000);if(manifest?.storage?.researchJournalMaxBytes!=null&&manifest.storage.researchJournalMaxBytes!==journalMaxBytes)throw new Error('Frozen research journal limit mismatch');if(manifest&&env.CLEAN_START_PILOT)throw new Error('Historical reset must be disabled for a study');if(manifest&&manifest.requestedModel!==(env.TYPESAFE_MODEL||'jev-1.13.0'))throw new Error('Frozen requested model mismatch');if((manifest&&env.RESEARCH_RUN_ID!==manifest.runId)||(env.RESEARCH_RUN_ID&&!manifest))throw new Error('Study identity/manifest mismatch');this.presence=new Map();this.inFlight=null;
+  super(ctx,env);const manifest=parseStudyManifest(env.RUN_MANIFEST_JSON);if(manifest?.runtime&&manifest.runtime.simSpeed!==safeInt(env.SIM_SPEED,1,1,20))throw new Error('Frozen simulation speed mismatch');const journalMaxBytes=safeInt(env.RESEARCH_JOURNAL_MAX_BYTES,64*1024*1024,1000000,1000000000);if(manifest?.storage?.researchJournalMaxBytes!=null&&manifest.storage.researchJournalMaxBytes!==journalMaxBytes)throw new Error('Frozen research journal limit mismatch');if(manifest&&env.CLEAN_START_PILOT)throw new Error('Historical reset must be disabled for a study');if(manifest&&manifest.requestedModel!==(env.TYPESAFE_MODEL||'jev-1.13.0'))throw new Error('Frozen requested model mismatch');if((manifest&&env.RESEARCH_RUN_ID!==manifest.runId)||(env.RESEARCH_RUN_ID&&!manifest))throw new Error('Study identity/manifest mismatch');this.presence=new Map();this.inFlight=null;
   this.ctx.blockConcurrencyWhile(async()=>{
    this.record=await ctx.storage.get('airport-ltfm-v1');
    if(!this.record){
@@ -115,7 +115,7 @@ export class AirportSimulation extends DurableObject{
  }
  async snapshot(){
   const {sim,ai,budget}=this.record,viewers=this.viewers(),studyStatus=this.record.study?.status??null,configured=Boolean(this.env.TYPESAFE_API_KEY)&&this.env.AI_ENABLED!=='false'&&!stopRequested(this),studyRunning=studyStatus==='running'&&configured,showMode=Boolean(viewers||studyRunning||['archive-error','input-too-large','study-stopped'].includes(ai.mode)),limits=this.limits();
-  return {experimentId:this.record.startedAt,operatorTarget:stopTarget(this.record),emergencyStop:stopView(this),...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:limits.simSpeed,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:this.record.study?studyRunning:Boolean(configured&&viewers&&['active','evaluating','backoff'].includes(ai.mode)),studyStatus,collection:this.record.study?{runId:this.record.study.manifest.runId,evidenceClass:this.record.study.manifest.evidenceClass??'live-study',startedAt:this.record.study.startedAt,targetSimulatedSeconds:this.record.study.manifest.stopping.targetSimulatedSeconds,accountedInputTokens:this.record.study.accountedInputTokens,tokenBudgetPolicy:this.record.study.manifest.stopping.tokenBudgetPolicy??'fixed-input-cap'}:null,ai:{...ai,mode:showMode?ai.mode:'idle',configured,intervalSeconds:limits.intervalMs/1000,wallIntervalSeconds:limits.intervalMs/1000/limits.simSpeed,budget:{...budgetAt(budget,Date.now()),limit:limits.dailyTokens}}};
+  return {experimentId:this.record.startedAt,operatorTarget:stopTarget(this.record),emergencyStop:stopView(this),...publicSimulation(sim),serverTime:Date.now(),updatedAt:sim.lastWall,speed:limits.simSpeed,viewers,totalVisits:this.totalVisits,viewerLeaseSeconds:VIEWER_LEASE_MS/1000,running:this.record.study?studyRunning:Boolean(configured&&viewers&&['active','evaluating'].includes(ai.mode)),studyStatus,collection:this.record.study?{runId:this.record.study.manifest.runId,evidenceClass:this.record.study.manifest.evidenceClass??'live-study',startedAt:this.record.study.startedAt,targetSimulatedSeconds:this.record.study.manifest.stopping.targetSimulatedSeconds,accountedInputTokens:this.record.study.accountedInputTokens,tokenBudgetPolicy:this.record.study.manifest.stopping.tokenBudgetPolicy??'fixed-input-cap'}:null,ai:{...ai,mode:showMode?ai.mode:'idle',configured,intervalSeconds:limits.intervalMs/1000,wallIntervalSeconds:limits.intervalMs/1000/limits.simSpeed,budget:{...budgetAt(budget,Date.now()),limit:limits.dailyTokens}}};
  }
  async replayData(page=0){return this.replay.read(page);}
  async captureReplay(sim){await this.replay.capture(sim);}
@@ -214,11 +214,12 @@ export class AirportSimulation extends DurableObject{
   if(this.inFlight||now<next.nextTick)return;
   if(next.ai.blockedRevision===next.sim.revision&&next.ai.blockedContextVersion===TYPESAFE_CONTEXT_VERSION){await this.ctx.storage.deleteAlarm();return;}
   if(next.paused){next.paused=false;next.sim.lastWall=now;next.ai.mode=['budget-limit','backoff','disabled','input-too-large','archive-error','study-stopped'].includes(next.ai.waitMode)?next.ai.waitMode:'awaiting';}
-  if((next.ai.mode==='active'&&next.frameRemaining>0)||next.ai.mode==='backoff'){
-   const cap=next.ai.mode==='backoff'?Infinity:next.frameRemaining,seconds=Math.min(next.study?Math.max(0,next.study.manifest.stopping.targetSimulatedSeconds-(next.sim.elapsed-next.study.startSimSeconds)):Infinity,cap,Math.max(0,Math.min(3,(now-next.sim.lastWall)/1000*simSpeed)));
-   const beforeElapsed=next.sim.elapsed;const capture=collectObservations(next.sim,()=>advanceSimulation(next.sim,seconds,{allowPendingDecision:next.ai.mode==='backoff'}));journalEvents.push({kind:'physics-step',providerBackoff:next.ai.mode==='backoff',from:beforeElapsed,to:next.sim.elapsed,events:capture.events});
-   if(next.frameRemaining>0)next.frameRemaining=Math.max(0,next.frameRemaining-(next.sim.elapsed-beforeElapsed));
-   if(next.ai.mode==='active'&&next.frameRemaining<=0)next.ai.mode='awaiting';
+  // Provider-failure backoff is not simulated exposure; only live provider latency advances physics.
+  if(next.ai.mode==='active'&&next.frameRemaining>0){
+   const seconds=Math.min(next.study?Math.max(0,next.study.manifest.stopping.targetSimulatedSeconds-(next.sim.elapsed-next.study.startSimSeconds)):Infinity,next.frameRemaining,Math.max(0,Math.min(3,(now-next.sim.lastWall)/1000*simSpeed)));
+   const beforeElapsed=next.sim.elapsed;const capture=collectObservations(next.sim,()=>advanceSimulation(next.sim,seconds));journalEvents.push({kind:'physics-step',from:beforeElapsed,to:next.sim.elapsed,events:capture.events});
+   next.frameRemaining=Math.max(0,next.frameRemaining-(next.sim.elapsed-beforeElapsed));
+   if(next.frameRemaining<=0)next.ai.mode='awaiting';
   }
   const stopAfter=studyStopReason(next,now);if(stopAfter){stopStudy(next,stopAfter);journalEvents.push({kind:'study-stop',reason:stopAfter});await this.persist(next,journalEvents);await this.ctx.storage.deleteAlarm();return;}
   if(next.sim.trafficScope===AIRBORNE_SCOPE&&next.sim.requiresDecision&&next.ai.mode!=='backoff'){next.frameRemaining=0;next.ai.nextAt=0;next.ai.mode='awaiting';}
@@ -238,6 +239,8 @@ export class AirportSimulation extends DurableObject{
    next.ai.lastConflictAt=next.sim.elapsed;
    plan.state.trigger={reason:'predicted-conflict',at:next.sim.elapsed,threats};
   }else plan.state.trigger={reason:'scheduled',at:next.sim.elapsed};
+  const lags=[...(next.ai.recentLatencyMs||[])].sort((a,b)=>a-b),lagMs=lags.length?lags[Math.floor(lags.length/2)]:null;
+  plan.state.timing={snapshotSimSeconds:next.sim.elapsed,simSpeed,expectedDecisionDelaySimSeconds:lagMs===null?null:Math.round(lagMs*simSpeed/100)/10,basis:lagMs===null?'no-completed-frame':'median-recent-frame-latency'};
   if(!plan.flights.length){
    next.sim.requiresDecision=false;const beforeElapsed=next.sim.elapsed;
    const idleSeconds=Math.min(2,next.study?Math.max(0,next.study.manifest.stopping.targetSimulatedSeconds-(next.sim.elapsed-next.study.startSimSeconds)):Infinity);
@@ -315,7 +318,7 @@ export class AirportSimulation extends DurableObject{
    await this.persist(settled,outcomeEvents);await this.ctx.storage.deleteAlarm();return;
   }
   const result={model:results[0].model,answers:Object.assign({},...results.map(r=>r.answers)),usage:{input_tokens:results.reduce((n,r)=>n+r.usage.input_tokens,0),output_tokens:results.reduce((n,r)=>n+r.usage.output_tokens,0)},latencyMs:Date.now()-batchStart};
-  settled.ai.totalLatencyMs+=result.latencyMs;settled.ai.failures=0;settled.ai.pendingPlanRevision=null;settled.ai.pendingSinceSim=null;
+  settled.ai.totalLatencyMs+=result.latencyMs;settled.ai.recentLatencyMs=[...(settled.ai.recentLatencyMs||[]),result.latencyMs].slice(-5);settled.ai.failures=0;settled.ai.pendingPlanRevision=null;settled.ai.pendingSinceSim=null;
   let applied={applied:0,rejected:0};
   if(settled.study?.status==='running'||this.viewers()){
    const responseSimSeconds=settled.sim.elapsed,requestSimSeconds=Number.isFinite(plan.state?.trigger?.at)?plan.state.trigger.at:responseSimSeconds,decisionAgeSimSeconds=Math.max(0,responseSimSeconds-requestSimSeconds),applicationRevisionDelta=Math.max(0,settled.sim.revision-plan.revision);
@@ -326,7 +329,7 @@ export class AirportSimulation extends DurableObject{
    const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(request)));
    return {batch:index,requestSha256:Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join(''),requestedModel:request.model,returnedModel:results[index].model,questionCount:Object.keys(request.questions).length,inputTokens:results[index].usage.input_tokens,outputTokens:results[index].usage.output_tokens,latencyMs:results[index].latencyMs};
   }));
-  const evidence={version:2,promptVersion:TYPESAFE_PROMPT_VERSION,contextVersion:TYPESAFE_CONTEXT_VERSION,requests:requestEvidence,evaluationProtocol:EVALUATION_PROTOCOL,controlPolicy:PILOT_CONTROL_POLICY,planRevision:plan.revision,requestSimSeconds:applied.requestSimSeconds,responseSimSeconds:applied.responseSimSeconds,decisionAgeSimSeconds:applied.decisionAgeSimSeconds,applicationRevisionDelta:applied.applicationRevisionDelta,runwayOrder:plan.runways.map(r=>r.id),runwayConflictResolution:'last-in-plan-order',answers:result.answers};
+  const evidence={version:3,promptVersion:TYPESAFE_PROMPT_VERSION,timing:plan.state.timing,contextVersion:TYPESAFE_CONTEXT_VERSION,requests:requestEvidence,evaluationProtocol:EVALUATION_PROTOCOL,controlPolicy:PILOT_CONTROL_POLICY,planRevision:plan.revision,requestSimSeconds:applied.requestSimSeconds,responseSimSeconds:applied.responseSimSeconds,decisionAgeSimSeconds:applied.decisionAgeSimSeconds,applicationRevisionDelta:applied.applicationRevisionDelta,runwayOrder:plan.runways.map(r=>r.id),runwayConflictResolution:'last-in-plan-order',answers:result.answers};
   settled.ai.last={trigger:plan.state.trigger,telemetry:plan.state.aircraft,at:Date.now(),model:result.model,latencyMs:result.latencyMs,usage:result.usage,aircraft:plan.flights.length,questions:Object.keys(result.answers).length,...applied,evidence,decisions:plan.flights.map(f=>({flight:f.id,route:result.answers[f.id+'_route'].choice,altitude:result.answers[f.id+'_altitude'].choice,speed:result.answers[f.id+'_speed'].choice,rate:result.answers[f.id+'_rate'].choice,confidence:result.answers[f.id+'_route'].confidence}))};
   outcomeEvents.push({kind:'frame-result',planRevision:plan.revision,...applied,viewersPresent:Boolean(this.viewers())});
   await this.persist(settled,outcomeEvents);if(!stopRequested(this)&&(settled.study?.status==='running'||this.viewers()))await this.ctx.storage.setAlarm(Date.now()+Math.max(100,Math.ceil(2000/limits.simSpeed)));
